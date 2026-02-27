@@ -1,0 +1,14 @@
+# Large/Sensitive Files
+node_modules/
+.env
+*.log
+.DS_Store
+
+# Build Outputs
+dist/
+dist-windows/
+build/
+
+# Local data
+/tmp/
+auth_debug.log
