@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const { getISTTime, getServerTime } = require('./utilsController');
 const crypto = require('crypto');
 const Session = require('../models/Session');
+const Settings = require('../models/Settings');
 
 // @desc    Register a new employee
 // @route   POST /api/auth/register
@@ -42,7 +43,7 @@ const registerEmployee = async (req, res) => {
 // @desc    Login employee & get token
 // @route   POST /api/auth/login
 const loginEmployee = async (req, res) => {
-    const { emp_no, password, device_info } = req.body;
+    const { emp_no, password, device_info, wifi_ssid } = req.body;
     const cleanEmpNo = emp_no?.trim().toUpperCase();
 
     const log = (msg) => {
@@ -100,6 +101,30 @@ const loginEmployee = async (req, res) => {
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
+
+        // --- WiFi SSID Restriction Check ---
+        if (employee.role !== 'admin') {
+            try {
+                const settings = await Settings.findOne();
+                const allowedSsid = settings?.office_wifi_ssid;
+
+                // Only enforce if an office SSID is set and not a default placeholder
+                if (allowedSsid && allowedSsid !== 'Your_Office_WiFi_Name' && allowedSsid !== 'Efour_Net') {
+                    if (!wifi_ssid || wifi_ssid.trim() !== allowedSsid.trim()) {
+                        log(`[AUTH-DENIED] WiFi mismatch. Expected: "${allowedSsid}", Received: "${wifi_ssid}"`);
+                        return res.status(403).json({
+                            message: 'Login Denied: You must be connected to the authorized Office Wi-Fi network.',
+                            required_ssid: allowedSsid
+                        });
+                    }
+                }
+            } catch (settingsErr) {
+                log(`[AUTH-WARN] Settings lookup failed: ${settingsErr.message}`);
+                // Proceed if settings lookup fails? Usually safer to block on high security, 
+                // but let's allow for now to prevent lockout during DB hiccups.
+            }
+        }
+        // ------------------------------------
 
         log(`[AUTH-DEBUG] IST Time...`);
         const istTimeNow = getISTTime();
