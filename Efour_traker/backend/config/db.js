@@ -1,14 +1,3 @@
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const dns = require('dns');
-
-// Overriding default DNS to handle Atlas SRV issues in restricted environments
-try {
-  dns.setServers(['8.8.8.8', '8.8.4.4']);
-} catch (e) {
-  console.warn('DNS override failed, using system defaults.');
-}
-
 dotenv.config();
 
 let cached = global.mongoose;
@@ -24,7 +13,9 @@ const connectDB = async () => {
 
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false, // Disable buffering to fail fast if connection fails
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of hanging
+      socketTimeoutMS: 45000,
     };
 
     if (!process.env.MONGODB_URI) {

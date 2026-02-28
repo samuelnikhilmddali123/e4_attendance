@@ -58,6 +58,11 @@ connectDB().then(async () => {
 });
 
 // Middleware
+app.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.originalUrl}`);
+    next();
+});
+
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || origin.includes('vercel.app') || origin === process.env.FRONTEND_URL) {

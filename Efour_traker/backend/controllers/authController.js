@@ -2,6 +2,7 @@ const Employee = require('../models/Employee');
 const Attendance = require('../models/Attendance');
 const LoginRequest = require('../models/LoginRequest');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const { getISTTime, getServerTime } = require('./utilsController');
 const crypto = require('crypto');
 const Session = require('../models/Session');
@@ -55,15 +56,22 @@ const loginEmployee = async (req, res) => {
 
     try {
         log(`[AUTH-DEBUG] Attempting login for: "${emp_no}"`);
+        log(`[AUTH-DEBUG] DB State: ${mongoose.connection.readyState}`);
+
+        if (mongoose.connection.readyState !== 1) {
+            log(`[AUTH-ERROR] Database not ready. State: ${mongoose.connection.readyState}`);
+            return res.status(503).json({ message: 'Database initialization in progress. Please retry in 5 seconds.' });
+        }
 
         let employee;
         try {
+            // Use a lean query with a manual timeout for max safety
             employee = await Employee.findOne({
                 $or: [
                     { emp_no: cleanEmpNo },
                     { email: emp_no?.toLowerCase().trim() }
                 ]
-            });
+            }).maxTimeMS(5000);
             log(`[AUTH-DEBUG] Employee found: ${!!employee}`);
         } catch (dbErr) {
             log(`[AUTH-ERROR] DB lookup fail: ${dbErr.message}`);
