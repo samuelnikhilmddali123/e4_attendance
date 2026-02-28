@@ -10,19 +10,19 @@ dotenv.config();
 
 const app = express();
 
-// 1. Hardened CORS for production/localhost testing
+// 1. Simplified & Robust CORS for Vercel + Localhost
 app.use(cors({
-    origin: (origin, callback) => {
-        // Mirror the origin to prevent CORS blocks during development/production
-        callback(null, true);
-    },
+    origin: true, // Mirror request origin (best for localhost + deployment)
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'set-cookie'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     optionsSuccessStatus: 200
 }));
 
-// 2. Global Request Logger (High priority for Vercel logs)
+// Explicitly handle OPTIONS preflight to ensure headers are always sent
+app.options('*', cors());
+
+// 2. Global Request Logger 
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
     next();
@@ -31,7 +31,17 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Database Connection Middleware (Ensures warm connection)
+// 3. Diagnostic/Health route (Move ABOVE DB to check if server even starts)
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        version: '5.0-BOOT-DEBUG',
+        database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        node: process.version
+    });
+});
+
+// 4. Database Connection Middleware (Ensures warm connection)
 app.use(async (req, res, next) => {
     try {
         await connectDB();
@@ -45,22 +55,13 @@ app.use(async (req, res, next) => {
     }
 });
 
-// Diagnostic/Health route
-app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        version: '4.0-VERCEL-SAFE',
-        database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-        node: process.version
-    });
-});
-
-// API Routes - Explicitly mapped
+// 5. API Routes - Explicitly mapped
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/utils', require('./routes/utilsRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
+
 
 // Root route
 app.get('/', (req, res) => {
