@@ -14,17 +14,20 @@ const connectDB = async () => {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of hanging
+      serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
     };
 
     if (!process.env.MONGODB_URI) {
-      throw new Error('MONGODB_URI is not defined in environment variables');
+      console.error('[DB] MONGODB_URI is missing!');
+      throw new Error('MONGODB_URI is not defined');
     }
 
-    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
-      console.log(`✅ MongoDB Connected: ${mongoose.connection.host}`);
-      return mongoose;
+    console.log('[DB] Connecting to MongoDB...');
+    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((m) => {
+      console.log(`✅ MongoDB Connected: ${m.connection.host}`);
+      return m;
     });
   }
 
