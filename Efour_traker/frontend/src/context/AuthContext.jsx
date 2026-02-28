@@ -42,8 +42,10 @@ export const AuthProvider = ({ children }) => {
     }, [user]);
 
     const login = async (emp_no, password) => {
+        console.log('[AUTH] Attempting login for:', emp_no);
         try {
             const response = await api.post('/auth/login', { emp_no, password });
+            console.log('[AUTH] Login response received:', response.status);
             const { token, user: loggedInUser, isRestricted } = response.data;
             const userData = { ...loggedInUser, isRestricted };
 
@@ -58,9 +60,15 @@ export const AuthProvider = ({ children }) => {
                 userData: userData // Pass full data to be finalized later
             };
         } catch (error) {
+            console.error('[AUTH] Login Error Details:', {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data,
+                url: error.config?.url
+            });
             return {
                 success: false,
-                message: error.response?.data?.message || 'Login failed',
+                message: error.response?.data?.message || 'Login failed: ' + error.message,
                 data: error.response?.data
             };
         }

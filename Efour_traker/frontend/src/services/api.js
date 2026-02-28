@@ -5,6 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://e4-attendance-2uoj.verc
 
 const api = axios.create({
     baseURL: API_URL,
+    timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
     },
