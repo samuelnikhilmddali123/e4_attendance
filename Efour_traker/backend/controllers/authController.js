@@ -99,52 +99,50 @@ const loginEmployee = async (req, res) => {
 
         log(`[AUTH-DEBUG] IST Time...`);
         const istTimeNow = getISTTime();
-        let isRestricted = false;
-        
-        if (employee.role === 'employee' && (new Date() >= istTimeNow.sevenPM || istTimeNow.hour >= 19)) {
-            const approval = await LoginRequest.findOne({
-               emp_no: employee.emp_no,
-               status: 'Approved',
-               expiry_time: { $gt: new Date() }
-           });
-           if (!approval) isRestricted = true;
-        }
+        const isRestricted = false; // Forced to false to allow 24/7 login
 
         log(`[AUTH-DEBUG] Signing token...`);
-        const session_token = !isRestricted ? crypto.randomBytes(32).toString('hex') : null;
+        const session_token = crypto.randomBytes(32).toString('hex');
         const token = jwt.sign(
-            { id: employee._id, emp_no: employee.emp_no, role: employee.role, session_token, isRestricted },
+            { id: employee._id, emp_no: employee.emp_no, role: employee.role, session_token, isRestricted: false },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );
 
         log(`[AUTH-DEBUG] Saving attendance...`);
         const ist = getISTTime();
-        if (!isRestricted) {
-           try {
-               await Attendance.updateMany({ emp_no: employee.emp_no, logout_time: null }, { $set: { logout_time: ist.timestamp, session_status: 'Forced Logout' }});
-               await Attendance.create({
-                   emp_no: employee.emp_no,
-                   login_time: ist.timestamp,
-                   date: ist.date,
-                   session_status: 'Active',
-                   device_info: device_info || 'Unknown'
-               });
-               log(`[AUTH-DEBUG] Attendance saved`);
-           } catch (e) { log(`[AUTH-ERROR] Attendance fail: ${e.message}`); }
-        }
+        try {
+            await Attendance.updateMany({ emp_no: employee.emp_no, logout_time: null }, { $set: { logout_time: ist.timestamp, session_status: 'Forced Logout' } });
+            await Attendance.create({
+                emp_no: employee.emp_no,
+                login_time: ist.timestamp,
+                date: ist.date,
+                session_status: 'Active',
+                device_info: device_info || 'Unknown'
+            });
+
+            // Deactivate old sessions and create a new session record
+            await Session.updateMany({ emp_no: employee.emp_no, is_active: true }, { $set: { is_active: false } });
+            await Session.create({
+                emp_no: employee.emp_no,
+                session_token: session_token,
+                device_info: device_info || 'Unknown'
+            });
+
+            log(`[AUTH-DEBUG] Attendance & Session saved`);
+        } catch (e) { log(`[AUTH-ERROR] Attendance fail: ${e.message}`); }
 
         log(`[AUTH-DEBUG] Success`);
-        res.json({ 
-            token, 
-            session_token, 
-            isRestricted, 
-            user: { 
-                emp_no: employee.emp_no, 
+        res.json({
+            token,
+            session_token,
+            isRestricted,
+            user: {
+                emp_no: employee.emp_no,
                 role: employee.role,
                 is_face_enabled: employee.is_face_enabled || false,
                 face_descriptor: employee.face_descriptor || []
-            } 
+            }
         });
     } catch (error) {
         log(`[AUTH-FATAL] ${error.message}\n${error.stack}`);
@@ -190,6 +188,14 @@ const logoutEmployee = async (req, res) => {
                     formatted: `${diffHrs}h ${diffMins}m`
                 };
             }
+        }
+
+        // Deactivate session
+        if (req.user && req.user.session_token) {
+            await Session.updateOne(
+                { session_token: req.user.session_token },
+                { $set: { is_active: false } }
+            );
         }
 
         res.json({

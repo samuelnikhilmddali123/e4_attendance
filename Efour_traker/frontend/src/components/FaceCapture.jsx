@@ -9,16 +9,25 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, labe
     const [isCapturing, setIsCapturing] = useState(false);
     const [error, setError] = useState(null);
     const [status, setStatus] = useState('Initializing...');
+    const scanStartTime = useRef(null);
+    const matchCount = useRef(0);
+    const enrollMatchCount = useRef(0);
 
     useEffect(() => {
         loadModels();
         return () => stopCamera();
     }, []);
 
+    useEffect(() => {
+        if (modelsLoaded && targetDescriptor && !isCapturing) {
+            startCamera();
+        }
+    }, [modelsLoaded, targetDescriptor]);
+
     const loadModels = async () => {
         try {
             setStatus('Loading Face AI Models...');
-            const MODEL_URL = '/models';
+            const MODEL_URL = `${window.location.origin}/models`;
             await Promise.all([
                 faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                 faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
@@ -28,22 +37,129 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, labe
             setStatus('Models Ready');
         } catch (err) {
             console.error('Model Load Error:', err);
-            setError('Failed to load face detection models');
+            setError(`Failed to load face detection models: ${err.message || 'Network Error'}`);
         }
     };
 
     const startCamera = async () => {
         try {
             setError(null);
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: 640, height: 480, facingMode: 'user' } 
+            const mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480, facingMode: 'user' }
             });
-            videoRef.current.srcObject = mediaStream;
             setStream(mediaStream);
             setIsCapturing(true);
             setStatus('Camera Active');
         } catch (err) {
+            console.error('Camera Access Error:', err);
             setError('Could not access camera. Please check permissions.');
+        }
+    };
+
+    useEffect(() => {
+        if (isCapturing && videoRef.current && stream) {
+            videoRef.current.srcObject = stream;
+        }
+    }, [isCapturing, stream]);
+
+    const autoVerifyLoop = async () => {
+        if (!videoRef.current || !isCapturing) return;
+
+        // Check for 10-second timeout
+        if (targetDescriptor && scanStartTime.current) {
+            const timeElapsed = Date.now() - scanStartTime.current;
+            if (timeElapsed >= 10000) {
+                stopCamera();
+                setError('Invalid face detected. Verification failed.');
+                setStatus('Verification Failed');
+                return; // Stop the loop completely
+            }
+        }
+
+        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+
+        try {
+            const detections = await faceapi
+                .detectSingleFace(videoRef.current, options)
+                .withFaceLandmarks(true)
+                .withFaceDescriptor();
+
+            if (detections && isCapturing) {
+                const targetFloatArr = new Float32Array(targetDescriptor);
+                const distance = faceapi.euclideanDistance(detections.descriptor, targetFloatArr);
+
+                if (distance < 0.45) {
+                    matchCount.current += 1;
+                    if (matchCount.current >= 3) {
+                        setStatus('Identity Verified! Logging in...');
+                        if (onVerify) onVerify(true);
+                        stopCamera();
+                        return; // Stop the loop successful
+                    } else {
+                        setStatus(`Verifying... Hold still (${matchCount.current}/3)`);
+                    }
+                } else {
+                    matchCount.current = 0;
+                    const timeRemaining = Math.ceil((10000 - (Date.now() - scanStartTime.current)) / 1000);
+                    setStatus(`Face found, but not a match. Retrying... (${timeRemaining}s)`);
+                }
+            } else if (isCapturing) {
+                matchCount.current = 0;
+                const timeRemaining = Math.ceil((10000 - (Date.now() - scanStartTime.current)) / 1000);
+                setStatus(`Scanning Face... Please hold still. (${timeRemaining}s)`);
+            }
+        } catch (err) {
+            console.error('Face detection loop error:', err);
+            matchCount.current = 0;
+        }
+
+        // Loop again if video is still playing
+        if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended && isCapturing) {
+            setTimeout(autoVerifyLoop, 400);
+        }
+    };
+
+    const autoEnrollLoop = async () => {
+        if (!videoRef.current || !isCapturing || targetDescriptor) return;
+
+        setStatus('Detecting Face...');
+        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.7 });
+
+        try {
+            const detections = await faceapi
+                .detectSingleFace(videoRef.current, options)
+                .withFaceLandmarks(true)
+                .withFaceDescriptor();
+
+            if (detections && isCapturing) {
+                // Require high confidence score to ensure it's a real, clear human face
+                if (detections.detection.score > 0.7) {
+                    enrollMatchCount.current += 1;
+                    setStatus(`Good face detected! Hold still... (${enrollMatchCount.current}/3)`);
+
+                    if (enrollMatchCount.current >= 3) {
+                        setStatus('Face Captured Successfully!');
+                        const descriptor = Array.from(detections.descriptor);
+                        onCapture(descriptor);
+                        stopCamera();
+                        return; // Stop loop
+                    }
+                } else {
+                    enrollMatchCount.current = 0;
+                    setStatus('Face detected but score is low. Please improve lighting.');
+                }
+            } else if (isCapturing) {
+                enrollMatchCount.current = 0;
+                setStatus('Looking for a clear face...');
+            }
+        } catch (err) {
+            console.error('Face capture loop error:', err);
+            enrollMatchCount.current = 0;
+        }
+
+        // Loop again if video is still playing
+        if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended && isCapturing) {
+            setTimeout(autoEnrollLoop, 500);
         }
     };
 
@@ -52,15 +168,17 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, labe
             stream.getTracks().forEach(track => track.stop());
             setStream(null);
             setIsCapturing(false);
+            matchCount.current = 0;
+            enrollMatchCount.current = 0;
         }
     };
 
     const handleCapture = async () => {
         if (!videoRef.current) return;
-        
+
         setStatus('Detecting Face...');
         const options = new faceapi.TinyFaceDetectorOptions();
-        
+
         // Detect single face with landmarks and descriptor
         const detections = await faceapi
             .detectSingleFace(videoRef.current, options)
@@ -75,13 +193,14 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, labe
 
         // The descriptor is an array of 128 numbers
         const descriptor = Array.from(detections.descriptor);
-        
+
         if (targetDescriptor && targetDescriptor.length > 0) {
             setStatus('Verifying Identity...');
-            const distance = faceapi.euclideanDistance(descriptor, targetDescriptor);
-            
-            // Euclidean distance < 0.5 means a strong match
-            if (distance < 0.5) {
+            const targetFloatArr = new Float32Array(targetDescriptor);
+            const distance = faceapi.euclideanDistance(detections.descriptor, targetFloatArr);
+
+            // Euclidean distance < 0.45 means a strong match
+            if (distance < 0.45) {
                 setStatus('Identity Verified!');
                 if (onVerify) onVerify(true);
                 stopCamera();
@@ -113,13 +232,12 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, labe
                         type="button"
                         onClick={startCamera}
                         disabled={!modelsLoaded}
-                        className={`px-6 py-2 rounded-xl font-bold text-sm transition-all ${
-                            modelsLoaded 
-                            ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-lg shadow-teal-100' 
+                        className={`px-6 py-2 rounded-xl font-bold text-sm transition-all ${modelsLoaded
+                            ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-lg shadow-teal-100'
                             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        }`}
+                            }`}
                     >
-                        {modelsLoaded ? 'Start Camera' : 'Loading Models...'}
+                        {status === 'Verification Failed' ? 'Retry Camera' : (modelsLoaded ? 'Start Camera' : 'Loading Models...')}
                     </button>
                 </div>
             ) : (
@@ -128,18 +246,19 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, labe
                         ref={videoRef}
                         autoPlay
                         muted
-                        className="w-full rounded-2xl shadow-xl border-4 border-white bg-black hidden sm:block"
+                        playsInline
+                        onPlay={() => {
+                            if (targetDescriptor) {
+                                scanStartTime.current = Date.now(); // Start 10s timer only when video actually appears
+                                autoVerifyLoop();
+                            } else {
+                                autoEnrollLoop();
+                            }
+                        }}
+                        className="w-full rounded-2xl shadow-xl border-4 border-white bg-black"
                         style={{ transform: 'scaleX(-1)' }}
                     />
                     <div className="mt-4 flex gap-2 justify-center">
-                        <button
-                            type="button"
-                            onClick={handleCapture}
-                            className="px-6 py-2 bg-teal-600 text-white rounded-xl font-bold text-sm hover:bg-teal-700 transition-all flex items-center gap-2"
-                        >
-                            <CheckCircle2 className="w-4 h-4" />
-                            {targetDescriptor ? 'Verify Identity' : 'Capture & Enroll'}
-                        </button>
                         <button
                             type="button"
                             onClick={stopCamera}

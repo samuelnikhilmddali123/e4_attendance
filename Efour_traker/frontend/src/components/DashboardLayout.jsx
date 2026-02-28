@@ -93,7 +93,7 @@ const DashboardLayout = () => {
             {/* Sidebar - Desktop */}
             <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
                 <div className="p-6 h-20 flex items-center border-b border-gray-100">
-                    <div className="h-10 w-10 bg-teal-600 rounded-xl flex items-center justify-center mr-3 shadow-sm text-white font-black">E</div>
+                    <img src="/logo.jpg" alt="EFOUR Logo" className="h-10 w-10 object-cover rounded-xl shadow-sm mr-3" />
                     <span className="text-xl font-black tracking-tighter text-gray-900">EFOUR</span>
                 </div>
 
@@ -134,7 +134,7 @@ const DashboardLayout = () => {
                 {/* Header */}
                 <header className="h-16 md:h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 shadow-sm">
                     <div className="flex items-center md:hidden gap-2">
-                        <div className="h-8 w-8 bg-teal-600 rounded-lg flex items-center justify-center shadow-sm text-white font-black text-xs">E</div>
+                        <img src="/logo.jpg" alt="EFOUR Logo" className="h-8 w-8 object-cover rounded-lg shadow-sm" />
                         <span className="text-base font-black tracking-tighter text-gray-900">EFOUR</span>
                     </div>
                     <div className="hidden md:block">

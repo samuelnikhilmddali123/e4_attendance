@@ -47,11 +47,16 @@ export const AuthProvider = ({ children }) => {
             const { token, user: loggedInUser, isRestricted } = response.data;
             const userData = { ...loggedInUser, isRestricted };
 
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(userData));
-            setUser(userData);
-
-            return { success: true, role: loggedInUser.role, isRestricted };
+            // We do NOT save to localStorage or state here. 
+            // This prevents App.jsx from re-rendering and unmounting the Login Camera.
+            return {
+                success: true,
+                role: loggedInUser.role,
+                isRestricted,
+                user: loggedInUser,
+                token: token,
+                userData: userData // Pass full data to be finalized later
+            };
         } catch (error) {
             return {
                 success: false,
@@ -59,6 +64,12 @@ export const AuthProvider = ({ children }) => {
                 data: error.response?.data
             };
         }
+    };
+
+    const finalizeLogin = (token, userData) => {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
     };
 
     const logout = async () => {
@@ -95,7 +106,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
+        <AuthContext.Provider value={{ user, loading, login, finalizeLogin, logout, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

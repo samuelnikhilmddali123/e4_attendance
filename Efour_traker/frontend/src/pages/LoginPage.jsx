@@ -15,9 +15,10 @@ const LoginPage = () => {
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [requestReason, setRequestReason] = useState('');
     const [requestStatus, setRequestStatus] = useState(null);
-    const { login } = useContext(AuthContext);
+    const { login, finalizeLogin } = useContext(AuthContext);
     const [faceVerifyData, setFaceVerifyData] = useState(null);
     const [loginResult, setLoginResult] = useState(null);
+    const [pendingLoginTokens, setPendingLoginTokens] = useState(null);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
@@ -47,7 +48,11 @@ const LoginPage = () => {
         }
     }, [showRequestModal, empNo]);
 
-    const handleLoginSuccess = (result) => {
+    const handleLoginSuccess = (result, tokens = null) => {
+        if (tokens) {
+            finalizeLogin(tokens.token, tokens.userData);
+        }
+
         if (result.user?.role === 'admin' || result.role === 'admin') {
             navigate('/admin');
         } else if (result.isRestricted) {
@@ -68,10 +73,12 @@ const LoginPage = () => {
             if (result.user?.is_face_enabled) {
                 setFaceVerifyData(result.user.face_descriptor);
                 setLoginResult(result);
+                // Keep the token and userData safe until verification
+                setPendingLoginTokens({ token: result.token, userData: result.userData });
                 setIsSubmitting(false);
                 return;
             }
-            handleLoginSuccess(result);
+            handleLoginSuccess(result, { token: result.token, userData: result.userData });
         } else {
             setError(result.message);
             if (result.data?.restricted) {
@@ -105,8 +112,8 @@ const LoginPage = () => {
             >
                 <div className="p-8 sm:p-12">
                     <div className="text-center mb-10">
-                        <div className="inline-flex items-center justify-center w-20 h-20 bg-teal-50 text-teal-600 rounded-3xl mb-6 shadow-inner border border-teal-100">
-                            <span className="text-3xl font-black italic">E</span>
+                        <div className="inline-flex items-center justify-center w-28 h-28 bg-white rounded-3xl mb-6 shadow-xl border border-gray-100 overflow-hidden">
+                            <img src="/logo.jpg" alt="EFOUR Logo" className="w-full h-full object-cover" />
                         </div>
                         <h1 className="text-3xl font-black text-slate-800 tracking-tight">EFOUR TRACKER</h1>
                         <p className="text-slate-500 mt-2 font-medium">{faceVerifyData ? 'Biometric Verification' : 'Sign in to your account'}</p>
@@ -114,12 +121,12 @@ const LoginPage = () => {
 
                     {faceVerifyData ? (
                         <div className="space-y-6">
-                            <FaceCapture 
+                            <FaceCapture
                                 label="Verification Required"
                                 targetDescriptor={faceVerifyData}
-                                onVerify={(matched) => matched && handleLoginSuccess(loginResult)}
+                                onVerify={(matched) => matched && handleLoginSuccess(loginResult, pendingLoginTokens)}
                             />
-                            <button 
+                            <button
                                 onClick={() => { setFaceVerifyData(null); setLoginResult(null); }}
                                 className="w-full py-2 text-slate-400 font-bold hover:text-slate-600 transition-all text-xs uppercase tracking-widest"
                             >
@@ -220,8 +227,8 @@ const LoginPage = () => {
 
                                 {requestStatus?.message ? (
                                     <div className={`p-4 rounded-2xl mb-6 text-xs font-bold leading-relaxed border ${requestStatus.type === 'success' ? 'bg-green-50 text-green-700 border-green-100' :
-                                            requestStatus.type === 'error' ? 'bg-red-50 text-red-700 border-red-100' :
-                                                'bg-teal-50 text-teal-700 border-teal-100'
+                                        requestStatus.type === 'error' ? 'bg-red-50 text-red-700 border-red-100' :
+                                            'bg-teal-50 text-teal-700 border-teal-100'
                                         }`}>
                                         {requestStatus.message}
                                         {requestStatus.type === 'success' && (

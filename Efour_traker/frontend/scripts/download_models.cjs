@@ -11,7 +11,8 @@ const models = [
   'face_landmark_68_tiny_model-weights_manifest.json',
   'face_landmark_68_tiny_model-shard1',
   'face_recognition_model-weights_manifest.json',
-  'face_recognition_model-shard1'
+  'face_recognition_model-shard1',
+  'face_recognition_model-shard2'
 ];
 
 async function download(file) {
