@@ -7,6 +7,7 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [currentSsid, setCurrentSsid] = useState(null);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -15,6 +16,30 @@ export const AuthProvider = ({ children }) => {
             setUser(JSON.parse(storedUser));
         }
         setLoading(false);
+
+        // Listen for message from Native (React Native WebView)
+        const handleMessage = (event) => {
+            try {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                console.log('[AUTH] Native Message Received:', data.type);
+
+                if (data.type === 'WIFI_SSID') {
+                    setCurrentSsid(data.ssid);
+                    console.log('[AUTH] SSID captured from native:', data.ssid);
+                }
+            } catch (e) {
+                // Not a JSON message or not for us
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        // Also listen on document for some older Android webviews
+        document.addEventListener('message', handleMessage);
+
+        return () => {
+            window.removeEventListener('message', handleMessage);
+            document.removeEventListener('message', handleMessage);
+        };
     }, []);
 
     const [socket, setSocket] = useState(null);
@@ -44,7 +69,11 @@ export const AuthProvider = ({ children }) => {
     const login = async (emp_no, password) => {
         console.log('[AUTH] Attempting login for:', emp_no);
         try {
-            const response = await api.post('/auth/login', { emp_no, password });
+            const response = await api.post('/auth/login', {
+                emp_no,
+                password,
+                wifi_ssid: currentSsid // Send SSID captured from native layer
+            });
             console.log('[AUTH] Login response received:', response.status);
             const { token, user: loggedInUser, isRestricted } = response.data;
             const userData = { ...loggedInUser, isRestricted };
