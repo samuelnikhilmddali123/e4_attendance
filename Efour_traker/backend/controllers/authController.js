@@ -102,34 +102,47 @@ const loginEmployee = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // --- WiFi SSID Restriction Check ---
+        // --- WiFi / Network Restriction Check ---
         if (employee.role !== 'admin') {
             try {
                 const settings = await Settings.findOne();
                 const allowedSsid = settings?.office_wifi_ssid;
+                const allowedIp = settings?.office_public_ip;
 
-                // Only enforce if an office SSID is set and not a default placeholder
-                if (allowedSsid && allowedSsid !== 'Your_Office_WiFi_Name' && allowedSsid !== 'Efour_Net') {
-                    const receivedSsid = wifi_ssid ? wifi_ssid.trim() : 'NONE';
-                    const targetSsid = allowedSsid.trim();
+                // Detect Client IP (Vercel uses x-forwarded-for)
+                const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+                log(`[AUTH-NETWORK] Client IP: ${clientIp}, SSID: ${wifi_ssid || 'NONE'}`);
 
-                    if (receivedSsid !== targetSsid) {
-                        log(`[AUTH-DENIED] WiFi mismatch. Expected: "${targetSsid}", Received: "${receivedSsid}"`);
+                // 1. If SSID is provided (Native App), prioritize SSID check
+                if (wifi_ssid) {
+                    if (allowedSsid && allowedSsid !== 'Your_Office_WiFi_Name' && allowedSsid !== 'Efour_Net') {
+                        if (wifi_ssid.trim() !== allowedSsid.trim()) {
+                            log(`[AUTH-DENIED] SSID mismatch. Expected: "${allowedSsid}", Received: "${wifi_ssid}"`);
+                            return res.status(403).json({
+                                message: 'Login Denied: You must be connected to the authorized Office Wi-Fi network.',
+                                debug_info: { error: 'SSID_MISMATCH', expected: allowedSsid.trim(), received: wifi_ssid.trim() }
+                            });
+                        }
+                    }
+                }
+                // 2. If NO SSID is provided (Browser), fallback to Public IP check
+                else if (allowedIp && allowedIp.trim() !== '') {
+                    // Note: IPv6 and IPv4 compatibility
+                    if (clientIp !== allowedIp.trim()) {
+                        log(`[AUTH-DENIED] IP mismatch. Expected: "${allowedIp}", Received: "${clientIp}"`);
                         return res.status(403).json({
-                            message: `Login Denied: You must be connected to the authorized Office Wi-Fi network.`,
+                            message: 'Login Denied: Unauthorized network. Mobile browser users must be on Office WiFi.',
                             debug_info: {
-                                error: 'SSID_MISMATCH',
-                                expected: targetSsid,
-                                received: receivedSsid,
-                                tip: 'Ensure you are using the Mobile App, not a web browser.'
+                                error: 'IP_MISMATCH',
+                                expected: allowedIp.trim(),
+                                received: clientIp,
+                                tip: 'SSID cannot be detected in browsers. Your Public IP must match the Office IP.'
                             }
                         });
                     }
                 }
             } catch (settingsErr) {
-                log(`[AUTH-WARN] Settings lookup failed: ${settingsErr.message}`);
-                // Proceed if settings lookup fails? Usually safer to block on high security, 
-                // but let's allow for now to prevent lockout during DB hiccups.
+                log(`[AUTH-WARN] Network settings lookup failed: ${settingsErr.message}`);
             }
         }
         // ------------------------------------

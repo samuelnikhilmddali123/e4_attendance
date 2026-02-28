@@ -11,6 +11,8 @@ const AdminDashboard = () => {
 
     // Wi-Fi Security State
     const [wifiSsid, setWifiSsid] = useState('');
+    const [officeIp, setOfficeIp] = useState('');
+    const [myIp, setMyIp] = useState('');
     const [savingWifi, setSavingWifi] = useState(false);
 
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -26,23 +28,31 @@ const AdminDashboard = () => {
         try {
             const res = await api.get('/settings/wifi');
             setWifiSsid(res.data.office_wifi_ssid || '');
+            setOfficeIp(res.data.office_public_ip || '');
+
+            // Also fetch current IP
+            const health = await api.get('/health');
+            setMyIp(health.data.client_ip);
         } catch (error) {
             console.error('Failed to fetch Wi-Fi settings:', error);
         }
     };
 
     const handleSaveWifi = async () => {
-        if (!wifiSsid.trim()) {
-            alert('Wi-Fi SSID cannot be empty.');
+        if (!wifiSsid.trim() && !officeIp.trim()) {
+            alert('At least one security measure (SSID or IP) must be provided.');
             return;
         }
         setSavingWifi(true);
         try {
-            await api.put('/settings/wifi', { office_wifi_ssid: wifiSsid.trim() });
-            alert('Office Wi-Fi network updated securely. Employees must connect to this network to login.');
+            await api.put('/settings/wifi', {
+                office_wifi_ssid: wifiSsid.trim(),
+                office_public_ip: officeIp.trim()
+            });
+            alert('Network security updated successfully.');
         } catch (error) {
             console.error(error);
-            alert('Failed to update Wi-Fi settings.');
+            alert('Failed to update settings.');
         } finally {
             setSavingWifi(false);
         }
@@ -97,33 +107,67 @@ const AdminDashboard = () => {
                 <StatCard title="Active Now" value={activeNow} icon={LogOut} color="bg-rose-600" />
             </div>
 
-            {/* Security Settings Card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="flex gap-4 items-center">
-                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
-                        <Wifi className="w-6 h-6" />
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex gap-4 items-center">
+                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                            <Wifi className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-800">Office Wi-Fi SSID</h3>
+                            <p className="text-xs text-gray-400 mt-0.5">Restriction for **Mobile App** (Native SSID detection).</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-800">Office Wi-Fi Security</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">Employees can only login when connected to this exact network name.</p>
+                    <div className="w-full md:w-auto flex items-center gap-3">
+                        <input
+                            type="text"
+                            value={wifiSsid}
+                            onChange={(e) => setWifiSsid(e.target.value)}
+                            placeholder="e.g. Efour_5G"
+                            className="flex-1 md:w-64 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm font-medium"
+                        />
                     </div>
                 </div>
-                <div className="w-full md:w-auto flex items-center gap-3">
-                    <input
-                        type="text"
-                        value={wifiSsid}
-                        onChange={(e) => setWifiSsid(e.target.value)}
-                        placeholder="e.g. Efour_5G"
-                        className="flex-1 md:w-64 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm font-medium"
-                    />
-                    <button
-                        onClick={handleSaveWifi}
-                        disabled={savingWifi}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 disabled:opacity-50"
-                    >
-                        <Save className="w-4 h-4" />
-                        {savingWifi ? 'Saving...' : 'Save'}
-                    </button>
+
+                <div className="h-px bg-gray-50"></div>
+
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex gap-4 items-center">
+                        <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center shrink-0">
+                            <Users className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-800">Office Public IP</h3>
+                            <p className="text-xs text-gray-400 mt-0.5">Restriction for **Web Browsers** (cannot see SSID).</p>
+                        </div>
+                    </div>
+                    <div className="w-full md:w-auto flex flex-col md:flex-row items-start md:items-center gap-3">
+                        <div className="flex flex-col gap-1">
+                            <input
+                                type="text"
+                                value={officeIp}
+                                onChange={(e) => setOfficeIp(e.target.value)}
+                                placeholder="Auto-Fill below or type IP"
+                                className="flex-1 md:w-64 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-sm font-medium"
+                            />
+                            {myIp && (
+                                <button
+                                    onClick={() => setOfficeIp(myIp)}
+                                    className="text-[10px] text-teal-600 font-bold hover:underline ml-1"
+                                >
+                                    Current Office IP: {myIp} (Click to set)
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            onClick={handleSaveWifi}
+                            disabled={savingWifi}
+                            className="w-full md:w-auto px-6 py-2 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            <Save className="w-4 h-4" />
+                            {savingWifi ? 'Saving...' : 'Save All Security Settings'}
+                        </button>
+                    </div>
                 </div>
             </div>
 

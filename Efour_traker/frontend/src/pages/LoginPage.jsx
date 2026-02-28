@@ -144,12 +144,21 @@ const LoginPage = () => {
                                     <AlertCircle className="w-5 h-5 flex-shrink-0" />
                                     <div className="flex flex-col">
                                         <p className="text-xs font-bold">{error}</p>
-                                        {/* Debug info for WiFi mismatch */}
-                                        {error.includes('Office Wi-Fi') && (
+
+                                        {/* WiFi SSID Mismatch */}
+                                        {window.lastErrorData?.debug_info?.error === 'SSID_MISMATCH' && (
                                             <div className="mt-2 p-2 bg-slate-900/5 rounded-lg text-[10px] font-mono text-slate-500">
-                                                <p>📡 Expected: "{window.lastErrorData?.debug_info?.expected || '???'}"</p>
-                                                <p>📱 Received: "{window.lastErrorData?.debug_info?.received || 'NONE'}"</p>
-                                                <p className="mt-1 text-slate-400 font-sans italic">{window.lastErrorData?.debug_info?.tip}</p>
+                                                <p>📡 Target WiFi: "{window.lastErrorData.debug_info.expected}"</p>
+                                                <p>📱 Detected: "{window.lastErrorData.debug_info.received}"</p>
+                                            </div>
+                                        )}
+
+                                        {/* IP Mismatch (Mobile Browser Case) */}
+                                        {window.lastErrorData?.debug_info?.error === 'IP_MISMATCH' && (
+                                            <div className="mt-2 p-2 bg-slate-900/5 rounded-lg text-[10px] font-mono text-slate-500">
+                                                <p>🌐 Office IP: "{window.lastErrorData.debug_info.expected}"</p>
+                                                <p>🌍 Your IP: "{window.lastErrorData.debug_info.received}"</p>
+                                                <p className="mt-1 text-red-500 font-sans italic tracking-tight">Browsers can't see WiFi names. Your IP must match the Office IP.</p>
                                             </div>
                                         )}
                                     </div>

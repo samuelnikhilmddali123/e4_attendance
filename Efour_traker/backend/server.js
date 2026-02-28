@@ -47,12 +47,14 @@ app.use(async (req, res, next) => {
 
 // 4. Diagnostic/Health route
 app.get('/api/health', (req, res) => {
+    const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
     res.json({
         status: 'ok',
-        version: '6.0-PROD-STABLE',
+        version: '6.1-HYBRID-NET',
         database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
         node: process.version,
-        time: new Date().toISOString()
+        time: new Date().toISOString(),
+        client_ip: clientIp
     });
 });
 
