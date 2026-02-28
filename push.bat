@@ -1,4 +1,4 @@
 cd C:\Efour
 git add .
-git commit -m "feat(deploy): Hardcode production backend URL for cross-domain support"
-git push origin main
+git commit -m "fix(deploy): FORCE HARDCODE PRODUCTION ENDPOINT URL"
+git push origin main -f

@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-// Automatically use VITE_API_URL in production when deployed separately, or fallback to the provided backend URL
-const API_URL = import.meta.env.VITE_API_URL || 'https://e4-attendance-2uoj.vercel.app/api';
+// Force hardcode the backend URL to prevent relative path mapping in production
+const API_URL = 'https://e4-attendance-2uoj.vercel.app/api';
+console.log('[API] Final Backend URL:', API_URL);
 
 const api = axios.create({
     baseURL: API_URL,

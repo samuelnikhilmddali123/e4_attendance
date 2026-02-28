@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         let newSocket;
         if (user && user.emp_no) {
-            newSocket = io(import.meta.env.VITE_API_URL || 'https://e4-attendance-2uoj.vercel.app');
+            newSocket = io('https://e4-attendance-2uoj.vercel.app');
             setSocket(newSocket);
 
             newSocket.emit('join_room', user.emp_no);

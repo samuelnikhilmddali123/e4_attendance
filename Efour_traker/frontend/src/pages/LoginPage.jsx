@@ -32,7 +32,7 @@ const LoginPage = () => {
     // Handle Socket for Login Request
     useEffect(() => {
         if (showRequestModal && empNo) {
-            const newSocket = io(import.meta.env.VITE_API_URL || 'https://e4-attendance-2uoj.vercel.app');
+            const newSocket = io('https://e4-attendance-2uoj.vercel.app');
 
             newSocket.emit('join_room', empNo.trim().toUpperCase());
 
