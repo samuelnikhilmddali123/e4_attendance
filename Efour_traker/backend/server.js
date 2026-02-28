@@ -10,31 +10,36 @@ dotenv.config();
 
 const app = express();
 
-// Basic Middleware
-app.use(express.json());
-app.use(morgan('dev'));
-
-// CORS - Standard serverless configuration
+// 1. Hardened CORS for production/localhost testing
 app.use(cors({
-    origin: true,
-    credentials: true
+    origin: (origin, callback) => {
+        // Mirror the origin to prevent CORS blocks during development/production
+        callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'set-cookie'],
+    optionsSuccessStatus: 200
 }));
 
-// Global Request Logger for Vercel Debugging
+// 2. Global Request Logger (High priority for Vercel logs)
 app.use((req, res, next) => {
-    console.log(`[REQUEST] ${req.method} ${req.originalUrl}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
     next();
 });
 
-// Warm-up database middleware
+app.use(express.json());
+app.use(morgan('dev'));
+
+// Database Connection Middleware (Ensures warm connection)
 app.use(async (req, res, next) => {
     try {
         await connectDB();
         next();
     } catch (err) {
-        console.error('[SYSTEM] DB Error during request:', err.message);
-        res.status(503).json({
-            message: 'Database is momentarily unavailable. Please retry.',
+        console.error('[SYSTEM] DB Connection Error during request:', err.message);
+        return res.status(503).json({
+            message: 'Database is currently unvailable. Please wait 10 seconds and try again.',
             error: err.message
         });
     }

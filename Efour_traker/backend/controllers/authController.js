@@ -45,18 +45,14 @@ const loginEmployee = async (req, res) => {
     const { emp_no, password, device_info } = req.body;
     const cleanEmpNo = emp_no?.trim().toUpperCase();
 
-    const fs = require('fs');
-    const path = require('path');
-    const logFile = path.join(process.cwd(), 'auth_debug.log');
     const log = (msg) => {
-        const entry = `[${new Date().toISOString()}] ${msg}\n`;
-        fs.appendFileSync(logFile, entry);
-        console.log(msg);
+        console.log(`[AUTH-DEBUG] ${msg}`);
     };
 
     try {
-        log(`[AUTH-DEBUG] Attempting login for: "${emp_no}"`);
-        log(`[AUTH-DEBUG] DB State: ${mongoose.connection.readyState}`);
+        log(`Attempting login for: "${emp_no}"`);
+        log(`DB State: ${mongoose.connection.readyState}`);
+
 
         if (mongoose.connection.readyState !== 1) {
             log(`[AUTH-ERROR] Database not ready. State: ${mongoose.connection.readyState}`);
