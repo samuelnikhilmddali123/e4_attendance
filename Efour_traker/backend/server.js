@@ -107,6 +107,15 @@ app.get('/api/debug/seed-admin', async (req, res) => {
 });
 
 // API Routes
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        version: '2.0-FIX',
+        database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        uptime: process.uptime()
+    });
+});
+
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
@@ -143,4 +152,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`EFOUR Server running on port ${PORT}`);
+    console.log('[SYSTEM] MONGODB_URI exists:', !!process.env.MONGODB_URI);
 });
