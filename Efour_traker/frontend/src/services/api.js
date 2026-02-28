@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Force hardcode the backend URL to prevent relative path mapping in production
-const API_URL = 'https://e4-attendance-2uoj.vercel.app/api';
+const API_URL = 'https://e4-attendance-2uoj.vercel.app/api/';
 console.log('[API] Final Backend URL:', API_URL);
 
 const api = axios.create({
@@ -12,9 +12,15 @@ const api = axios.create({
     },
 });
 
-// Add a request interceptor to include the JWT token
+// Add a request interceptor to fix URL joining and include the JWT token
 api.interceptors.request.use(
     (config) => {
+        // Fix: If URL starts with '/', Axios baseURL joining replaces the whole path.
+        // Stripping the leading slash makes it relative to the baseURL.
+        if (config.url.startsWith('/')) {
+            config.url = config.url.substring(1);
+        }
+
         const token = localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
