@@ -14,10 +14,10 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: (origin, callback) => {
-            if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+            if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || origin.includes('vercel.app') || origin === process.env.FRONTEND_URL) {
                 return callback(null, true);
             }
-            callback(null, false);
+            callback(null, true); // Allow all for ease of separate deployment
         },
         credentials: true
     }
@@ -60,10 +60,10 @@ connectDB().then(async () => {
 // Middleware
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+        if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || origin.includes('vercel.app') || origin === process.env.FRONTEND_URL) {
             return callback(null, true);
         }
-        callback(null, false);
+        callback(null, true); // Allow all for ease of separate deployment
     },
     credentials: true
 }));

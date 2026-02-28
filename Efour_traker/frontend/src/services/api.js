@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Automatically use /api which is proxied in development or handled by the server in production
-const API_URL = '/api';
+// Automatically use VITE_API_URL in production when deployed separately, or fallback to /api proxy
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
     baseURL: API_URL,
