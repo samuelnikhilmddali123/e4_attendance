@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import {
-    Users, ClipboardList, LogOut, CheckCircle2, AlertCircle
+    Users, ClipboardList, LogOut, CheckCircle2, AlertCircle, Wifi, Save
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -9,13 +9,44 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [terminating, setTerminating] = useState(false);
 
+    // Wi-Fi Security State
+    const [wifiSsid, setWifiSsid] = useState('');
+    const [savingWifi, setSavingWifi] = useState(false);
+
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
     useEffect(() => {
         fetchAll();
+        fetchWifiSettings();
         const interval = setInterval(fetchAll, 30000);
         return () => clearInterval(interval);
     }, []);
+
+    const fetchWifiSettings = async () => {
+        try {
+            const res = await api.get('/settings/wifi');
+            setWifiSsid(res.data.office_wifi_ssid || '');
+        } catch (error) {
+            console.error('Failed to fetch Wi-Fi settings:', error);
+        }
+    };
+
+    const handleSaveWifi = async () => {
+        if (!wifiSsid.trim()) {
+            alert('Wi-Fi SSID cannot be empty.');
+            return;
+        }
+        setSavingWifi(true);
+        try {
+            await api.put('/settings/wifi', { office_wifi_ssid: wifiSsid.trim() });
+            alert('Office Wi-Fi network updated securely. Employees must connect to this network to login.');
+        } catch (error) {
+            console.error(error);
+            alert('Failed to update Wi-Fi settings.');
+        } finally {
+            setSavingWifi(false);
+        }
+    };
 
     const fetchAll = async () => {
         try {
@@ -64,6 +95,36 @@ const AdminDashboard = () => {
                 <StatCard title="Total Employees" value={todayReport.length} icon={Users} color="bg-slate-800" />
                 <StatCard title="Present Today" value={presentToday} icon={CheckCircle2} color="bg-teal-600" />
                 <StatCard title="Active Now" value={activeNow} icon={LogOut} color="bg-rose-600" />
+            </div>
+
+            {/* Security Settings Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex gap-4 items-center">
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                        <Wifi className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-800">Office Wi-Fi Security</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">Employees can only login when connected to this exact network name.</p>
+                    </div>
+                </div>
+                <div className="w-full md:w-auto flex items-center gap-3">
+                    <input
+                        type="text"
+                        value={wifiSsid}
+                        onChange={(e) => setWifiSsid(e.target.value)}
+                        placeholder="e.g. Efour_5G"
+                        className="flex-1 md:w-64 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm font-medium"
+                    />
+                    <button
+                        onClick={handleSaveWifi}
+                        disabled={savingWifi}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                        <Save className="w-4 h-4" />
+                        {savingWifi ? 'Saving...' : 'Save'}
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">

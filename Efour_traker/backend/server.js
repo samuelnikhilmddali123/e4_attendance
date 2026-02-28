@@ -28,10 +28,10 @@ connectDB().then(async () => {
     console.log('[SYSTEM] MongoDB Connected Successfully');
     try {
         const Employee = require('./models/Employee');
-        
+
         // Find ADMIN001 and always reset password to 'efour123' to ensure login works
         let admin = await Employee.findOne({ emp_no: 'ADMIN001' });
-        
+
         if (!admin) {
             console.log('[SEED] Creating fresh ADMIN001...');
             await Employee.create({
@@ -85,10 +85,10 @@ app.get('/api/debug/seed-admin', async (req, res) => {
     console.log('[DEBUG] Manual seed requested via browser');
     try {
         const Employee = require('./models/Employee');
-        
+
         // Remove existing to force a re-save with new hash
         await Employee.deleteOne({ emp_no: 'ADMIN001' });
-        
+
         const admin = await Employee.create({
             emp_no: 'ADMIN001',
             name: 'admin',
@@ -98,7 +98,7 @@ app.get('/api/debug/seed-admin', async (req, res) => {
             role: 'admin',
             status: 'active'
         });
-        
+
         res.json({ success: true, message: 'Admin recreated with correct password', admin_id: admin.emp_no });
     } catch (err) {
         console.error('[DEBUG] Seed fail:', err.message);
@@ -111,6 +111,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/utils', require('./routes/utilsRoutes'));
+app.use('/api/settings', require('./routes/settingsRoutes'));
 
 app.get('/', (req, res) => {
     res.send('EFOUR Work Monitoring API is running...');

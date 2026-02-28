@@ -132,10 +132,10 @@ const DashboardLayout = () => {
             {/* Main Content */}
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Header */}
-                <header className="h-16 md:h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 shadow-sm">
-                    <div className="flex items-center md:hidden gap-2">
-                        <img src="/logo.jpg" alt="EFOUR Logo" className="h-8 w-8 object-cover rounded-lg shadow-sm" />
-                        <span className="text-base font-black tracking-tighter text-gray-900">EFOUR</span>
+                <header className="h-16 md:h-20 bg-white border-b border-gray-200 flex items-center justify-between px-2 md:px-6 sticky top-0 z-10 shadow-sm">
+                    <div className="flex items-center md:hidden gap-1.5 shrink-0">
+                        <img src="/logo.jpg" alt="EFOUR Logo" className="h-8 w-8 object-cover rounded-lg shadow-sm shrink-0" />
+                        <span className="text-sm font-black tracking-tighter text-gray-900">EFOUR</span>
                     </div>
                     <div className="hidden md:block">
                         <h2 className="text-xl font-bold text-gray-800">
@@ -143,12 +143,12 @@ const DashboardLayout = () => {
                         </h2>
                     </div>
 
-                    <div className="flex items-center gap-3 md:gap-6">
+                    <div className="flex items-center gap-1.5 md:gap-6">
                         <LiveClock />
-                        <div className="flex items-center gap-2 md:gap-4">
-                            <button className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-colors relative">
+                        <div className="flex items-center gap-1 md:gap-4">
+                            <button className="p-1 md:p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-colors relative">
                                 <Bell className="w-5 h-5 md:w-6 md:h-6" />
-                                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white"></span>
+                                <span className="absolute top-1.5 md:top-2 right-1.5 md:right-2 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white"></span>
                             </button>
                             <div className="h-6 w-px bg-gray-200 mx-1 md:mx-2"></div>
                             <div className="flex items-center gap-2 md:gap-3">
