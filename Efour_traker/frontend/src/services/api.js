@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Automatically use VITE_API_URL in production when deployed separately, or fallback to /api proxy
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Automatically use VITE_API_URL in production when deployed separately, or fallback to the provided backend URL
+const API_URL = import.meta.env.VITE_API_URL || 'https://e4-attendance-2uoj.vercel.app/api';
 
 const api = axios.create({
     baseURL: API_URL,
