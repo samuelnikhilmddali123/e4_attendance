@@ -142,7 +142,17 @@ const LoginPage = () => {
                                     className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 text-red-700 rounded-2xl"
                                 >
                                     <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                                    <p className="text-xs font-bold">{error}</p>
+                                    <div className="flex flex-col">
+                                        <p className="text-xs font-bold">{error}</p>
+                                        {/* Debug info for WiFi mismatch */}
+                                        {error.includes('Office Wi-Fi') && (
+                                            <div className="mt-2 p-2 bg-slate-900/5 rounded-lg text-[10px] font-mono text-slate-500">
+                                                <p>📡 Expected: "{window.lastErrorData?.debug_info?.expected || '???'}"</p>
+                                                <p>📱 Received: "{window.lastErrorData?.debug_info?.received || 'NONE'}"</p>
+                                                <p className="mt-1 text-slate-400 font-sans italic">{window.lastErrorData?.debug_info?.tip}</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </motion.div>
                             )}
 

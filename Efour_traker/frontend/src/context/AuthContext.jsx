@@ -95,6 +95,8 @@ export const AuthProvider = ({ children }) => {
                 data: error.response?.data,
                 url: error.config?.url
             });
+            // Store data for UI debug display
+            window.lastErrorData = error.response?.data;
             return {
                 success: false,
                 message: error.response?.data?.message || 'Login failed: ' + error.message,

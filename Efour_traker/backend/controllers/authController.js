@@ -110,11 +110,19 @@ const loginEmployee = async (req, res) => {
 
                 // Only enforce if an office SSID is set and not a default placeholder
                 if (allowedSsid && allowedSsid !== 'Your_Office_WiFi_Name' && allowedSsid !== 'Efour_Net') {
-                    if (!wifi_ssid || wifi_ssid.trim() !== allowedSsid.trim()) {
-                        log(`[AUTH-DENIED] WiFi mismatch. Expected: "${allowedSsid}", Received: "${wifi_ssid}"`);
+                    const receivedSsid = wifi_ssid ? wifi_ssid.trim() : 'NONE';
+                    const targetSsid = allowedSsid.trim();
+
+                    if (receivedSsid !== targetSsid) {
+                        log(`[AUTH-DENIED] WiFi mismatch. Expected: "${targetSsid}", Received: "${receivedSsid}"`);
                         return res.status(403).json({
-                            message: 'Login Denied: You must be connected to the authorized Office Wi-Fi network.',
-                            required_ssid: allowedSsid
+                            message: `Login Denied: You must be connected to the authorized Office Wi-Fi network.`,
+                            debug_info: {
+                                error: 'SSID_MISMATCH',
+                                expected: targetSsid,
+                                received: receivedSsid,
+                                tip: 'Ensure you are using the Mobile App, not a web browser.'
+                            }
                         });
                     }
                 }
