@@ -156,7 +156,7 @@ const loginEmployee = async (req, res) => {
         const token = jwt.sign(
             { id: employee._id, emp_no: employee.emp_no, role: employee.role, session_token, isRestricted: false },
             process.env.JWT_SECRET || 'fallback_secret',
-            { expiresIn: '24h' }
+            { expiresIn: '15m' } // Short-lived Access Token
         );
 
         log(`[AUTH-DEBUG] Saving attendance...`);
@@ -193,8 +193,8 @@ const loginEmployee = async (req, res) => {
 
         log(`[AUTH-DEBUG] Success`);
 
-        // Set persistent cookie for mobile WebView
-        res.cookie('auth_token', token, {
+        // Set persistent HTTP-only cookie with the long-lived refresh token
+        res.cookie('refresh_token', session_token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -292,7 +292,7 @@ const logoutEmployee = async (req, res) => {
             );
         }
 
-        res.clearCookie('auth_token', {
+        res.clearCookie('refresh_token', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax'
@@ -308,6 +308,49 @@ const logoutEmployee = async (req, res) => {
             message: 'Server error during logout',
             error: error.message
         });
+    }
+};
+
+// @desc    Refresh Access Token
+// @route   POST /api/auth/refresh
+const refreshToken = async (req, res) => {
+    try {
+        const sessionToken = req.cookies.refresh_token;
+
+        if (!sessionToken) {
+            return res.status(401).json({ message: 'No refresh token provided' });
+        }
+
+        // Validate session
+        const session = await Session.findOne({ session_token: sessionToken, is_active: true });
+
+        if (!session) {
+            // Session revoked or invalid, clear the cookie
+            res.clearCookie('refresh_token');
+            return res.status(401).json({ message: 'Session expired or invalid' });
+        }
+
+        const employee = await Employee.findOne({ emp_no: session.emp_no });
+
+        if (!employee) {
+            res.clearCookie('refresh_token');
+            return res.status(401).json({ message: 'User not found' });
+        }
+
+        // Issue new short-lived access token
+        const newAccessToken = jwt.sign(
+            { id: employee._id, emp_no: employee.emp_no, role: employee.role, session_token: sessionToken, isRestricted: false },
+            process.env.JWT_SECRET || 'fallback_secret',
+            { expiresIn: '15m' }
+        );
+
+        // Update session last activity
+        session.updateActivity();
+
+        res.json({ token: newAccessToken });
+    } catch (error) {
+        console.error('Refresh Token Error:', error);
+        res.status(500).json({ message: 'Failed to refresh token' });
     }
 };
 
@@ -381,5 +424,5 @@ const requestLoginPermission = async (req, res) => {
     }
 };
 
-module.exports = { registerEmployee, loginEmployee, logoutEmployee, changePassword, requestLoginPermission, getMe };
+module.exports = { registerEmployee, loginEmployee, logoutEmployee, changePassword, requestLoginPermission, getMe, refreshToken };
 

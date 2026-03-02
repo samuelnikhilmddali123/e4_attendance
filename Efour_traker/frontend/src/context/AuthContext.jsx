@@ -32,27 +32,18 @@ export const AuthProvider = ({ children }) => {
         const checkSession = async () => {
             try {
                 // Check if our persistent HttpOnly cookie is still alive and recognized by the server
+                // This will trigger the Axios interceptor to refresh the Access Token if needed
                 const response = await api.get('/auth/me');
                 if (response.data && response.data.user) {
                     const userData = { ...response.data.user, isRestricted: response.data.isRestricted };
                     setUser(userData);
-                    // Sync standard localStorage for normal browser usage, even though the WebView relies on the cookie
                     localStorage.setItem('user', JSON.stringify(userData));
-                    // We no longer strictly need the token in localStorage, but keeping it helps legacy axios interceptors
                 }
             } catch (error) {
-                // If the cookie is dead or missing, fallback to whatever is in true localStorage (if it survived)
-                const storedUser = localStorage.getItem('user');
-                const token = localStorage.getItem('token');
-
-                if (storedUser && token) {
-                    // Try one last gasp with the token to see if it's still alive via headers
-                    setUser(JSON.parse(storedUser));
-                } else {
-                    setUser(null);
-                    localStorage.removeItem('user');
-                    localStorage.removeItem('token');
-                }
+                // If we reach here, both the Access Token and the Refresh Token are dead/invalid.
+                setUser(null);
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
             } finally {
                 setLoading(false);
             }
