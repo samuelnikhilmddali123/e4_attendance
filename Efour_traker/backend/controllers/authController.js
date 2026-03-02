@@ -196,8 +196,8 @@ const loginEmployee = async (req, res) => {
         // Set persistent HTTP-only cookie with the long-lived refresh token
         res.cookie('refresh_token', session_token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            secure: true,
+            sameSite: 'none',
             maxAge: 30 * 24 * 60 * 60 * 1000 // 30 Days
         });
         res.json({
@@ -294,8 +294,8 @@ const logoutEmployee = async (req, res) => {
 
         res.clearCookie('refresh_token', {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax'
+            secure: true,
+            sameSite: 'none'
         });
 
         res.json({
@@ -326,14 +326,14 @@ const refreshToken = async (req, res) => {
 
         if (!session) {
             // Session revoked or invalid, clear the cookie
-            res.clearCookie('refresh_token');
+            res.clearCookie('refresh_token', { httpOnly: true, secure: true, sameSite: 'none' });
             return res.status(401).json({ message: 'Session expired or invalid' });
         }
 
         const employee = await Employee.findOne({ emp_no: session.emp_no });
 
         if (!employee) {
-            res.clearCookie('refresh_token');
+            res.clearCookie('refresh_token', { httpOnly: true, secure: true, sameSite: 'none' });
             return res.status(401).json({ message: 'User not found' });
         }
 
