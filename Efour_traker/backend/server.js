@@ -12,16 +12,31 @@ dotenv.config();
 const app = express();
 
 // 1. Hardened CORS for production/localhost testing
-app.use(cors({
-    origin: true, // Mirror request origin (best for localhost + deployment)
+const allowedOrigins = [
+    'https://e4-attendance-v9im.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000'
+];
+
+const corsOptions = {
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.log(`[CORS-WARN] Blocked origin: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
     optionsSuccessStatus: 200
-}));
+};
+
+app.use(cors(corsOptions));
 
 // Explicitly handle OPTIONS preflight
-app.options('*', cors());
+app.options('*', cors(corsOptions));
 
 // 2. Global Request Logger 
 app.use((req, res, next) => {
