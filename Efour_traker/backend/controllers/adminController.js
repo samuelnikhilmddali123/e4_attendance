@@ -208,7 +208,6 @@ const createEmployee = async (req, res) => {
             return res.status(400).json({ message: 'Employee ID or email already exists' });
         }
 
-<<<<<<< HEAD
         // Check Face Uniqueness
         if (is_face_enabled && face_descriptor && face_descriptor.length > 0) {
             const allFaceUsers = await Employee.find({ is_face_enabled: true });
@@ -229,9 +228,6 @@ const createEmployee = async (req, res) => {
                 }
             }
         }
-
-=======
->>>>>>> 9d3833c (feat: implement webview session persistence with httponly cookies)
         const employee = new Employee({
             emp_no,
             name,
