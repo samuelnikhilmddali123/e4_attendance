@@ -157,4 +157,63 @@ const getWorkDuration = async (req, res) => {
     }
 };
 
-module.exports = { getAttendanceHistory, getEmployeeAttendanceForAdmin, getWorkDuration };
+// @desc    Ping to verify WiFi connectivity
+// @route   POST /api/attendance/ping
+const pingWiFi = async (req, res) => {
+    const { emp_no } = req.user;
+    const current_ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+
+    try {
+        const istTime = getISTTime();
+        const today = istTime.date;
+
+        const record = await Attendance.findOne({
+            emp_no,
+            date: today,
+            logout_time: null
+        }).sort({ login_time: -1 });
+
+        if (!record) {
+            return res.json({ success: false, message: 'No active session found', isOnWifi: false });
+        }
+
+        let referenceIp = record.wifi_ip;
+        if (!referenceIp && current_ip) {
+            record.wifi_ip = current_ip;
+            referenceIp = current_ip;
+        }
+
+        let isOnWifi = false;
+        if (referenceIp && current_ip && referenceIp === current_ip) {
+            isOnWifi = true;
+        }
+
+        const previousStatus = record.is_on_wifi;
+        record.last_ping = Date.now();
+        record.is_on_wifi = isOnWifi;
+
+        if (previousStatus !== isOnWifi) {
+            record.wifi_history.push({
+                status: isOnWifi ? 'Connected' : 'Disconnected',
+                timestamp: Date.now()
+            });
+
+            const io = req.app.get('io');
+            if (io) {
+                io.emit('employee_wifi_status_changed', {
+                    emp_no,
+                    is_on_wifi: isOnWifi,
+                    timestamp: Date.now()
+                });
+            }
+        }
+
+        await record.save();
+        res.json({ success: true, isOnWifi });
+    } catch (error) {
+        console.error('Ping WiFi Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+module.exports = { getAttendanceHistory, getEmployeeAttendanceForAdmin, getWorkDuration, pingWiFi };

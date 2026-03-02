@@ -27,6 +27,22 @@ const attendanceSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    wifi_ip: {
+        type: String,
+        default: null
+    },
+    is_on_wifi: {
+        type: Boolean,
+        default: true
+    },
+    last_ping: {
+        type: Date,
+        default: Date.now
+    },
+    wifi_history: [{
+        status: { type: String, enum: ['Connected', 'Disconnected'] },
+        timestamp: { type: Date, default: Date.now }
+    }],
     device_info: {
         type: String,
         default: null

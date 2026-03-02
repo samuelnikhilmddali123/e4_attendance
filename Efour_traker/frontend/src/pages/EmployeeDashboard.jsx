@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
-import { Clock, Lock, X } from 'lucide-react';
+import { Clock, Lock, X, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AttendanceCalendar from '../components/AttendanceCalendar';
 
@@ -16,6 +16,7 @@ const EmployeeDashboard = () => {
     // Attendance states
     const [attendanceHistory, setAttendanceHistory] = useState([]);
     const [firstLogin, setFirstLogin] = useState(null);
+    const [isOnWifi, setIsOnWifi] = useState(true);
 
     // Fetch first login time 
     useEffect(() => {
@@ -36,6 +37,22 @@ const EmployeeDashboard = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // Ping WiFi status
+    useEffect(() => {
+        const pingWifi = async () => {
+            try {
+                const res = await api.post('/attendance/ping');
+                setIsOnWifi(res.data.isOnWifi);
+            } catch (e) {
+                console.error('Ping failed:', e);
+                setIsOnWifi(false);
+            }
+        };
+        pingWifi();
+        const pingInterval = setInterval(pingWifi, 60000);
+        return () => clearInterval(pingInterval);
+    }, []);
+
     const fetchAttendanceHistory = async () => {
         try {
             const attRes = await api.get('/attendance/history');
@@ -52,7 +69,26 @@ const EmployeeDashboard = () => {
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-6 relative">
+            <AnimatePresence>
+                {!isOnWifi && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-6 text-center"
+                    >
+                        <WifiOff className="w-20 h-20 text-red-400 mb-6 animate-pulse" />
+                        <h2 className="text-3xl font-black text-white mb-4">Network Disconnected</h2>
+                        <p className="text-xl text-slate-300 max-w-md">
+                            You must be connected to the office WiFi to access the dashboard.
+                            <br /><br />
+                            Your work session is virtually logged out. Please reconnect to resume automatically.
+                        </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Header Info */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>

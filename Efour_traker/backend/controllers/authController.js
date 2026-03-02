@@ -161,28 +161,45 @@ const loginEmployee = async (req, res) => {
 
         log(`[AUTH-DEBUG] Saving attendance...`);
         const ist = getISTTime();
-        try {
-            await Attendance.updateMany({ emp_no: employee.emp_no, logout_time: null }, { $set: { logout_time: ist.timestamp, session_status: 'Forced Logout' } });
-            await Attendance.create({
-                emp_no: employee.emp_no,
-                login_time: ist.timestamp,
-                date: ist.date,
-                session_status: 'Active',
-                device_info: device_info || 'Unknown'
-            });
+        if (!isRestricted) {
+            try {
+                await Attendance.updateMany({ emp_no: employee.emp_no, logout_time: null }, { $set: { logout_time: ist.timestamp, session_status: 'Forced Logout' } });
 
-            // Deactivate old sessions and create a new session record
-            await Session.updateMany({ emp_no: employee.emp_no, is_active: true }, { $set: { is_active: false } });
-            await Session.create({
-                emp_no: employee.emp_no,
-                session_token: session_token,
-                device_info: device_info || 'Unknown'
-            });
+                const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
 
-            log(`[AUTH-DEBUG] Attendance & Session saved`);
-        } catch (e) { log(`[AUTH-ERROR] Attendance fail: ${e.message}`); }
+                await Attendance.create({
+                    emp_no: employee.emp_no,
+                    login_time: ist.timestamp,
+                    date: ist.date,
+                    session_status: 'Active',
+                    device_info: device_info || 'Unknown',
+                    wifi_ip: clientIp,
+                    is_on_wifi: true,
+                    last_ping: Date.now(),
+                    wifi_history: [{ status: 'Connected', timestamp: Date.now() }]
+                });
+
+                // Deactivate old sessions and create a new session record
+                await Session.updateMany({ emp_no: employee.emp_no, is_active: true }, { $set: { is_active: false } });
+                await Session.create({
+                    emp_no: employee.emp_no,
+                    session_token: session_token,
+                    device_info: device_info || 'Unknown'
+                });
+
+                log(`[AUTH-DEBUG] Attendance & Session saved`);
+            } catch (e) { log(`[AUTH-ERROR] Attendance fail: ${e.message}`); }
+        }
 
         log(`[AUTH-DEBUG] Success`);
+
+        // Set persistent cookie for mobile WebView
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 Days
+        });
         res.json({
             token,
             session_token,
@@ -197,6 +214,33 @@ const loginEmployee = async (req, res) => {
     } catch (error) {
         log(`[AUTH-FATAL] ${error.message}\n${error.stack}`);
         res.status(500).json({ message: 'Server error during login', error: error.message, stack: error.stack });
+    }
+};
+
+// @desc    Get current logged in user details from cookie/token
+// @route   GET /api/auth/me
+const getMe = async (req, res) => {
+    try {
+        const employee = await Employee.findById(req.user.id).select('-password');
+        if (!employee) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.json({
+            user: {
+                emp_no: employee.emp_no,
+                role: employee.role,
+                name: employee.name,
+                full_name: employee.full_name,
+                email: employee.email,
+                profile_picture: employee.profile_picture,
+                is_face_enabled: employee.is_face_enabled || false,
+                face_descriptor: employee.face_descriptor || []
+            },
+            isRestricted: req.user.isRestricted
+        });
+    } catch (error) {
+        console.error('Get Me Error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
@@ -247,6 +291,12 @@ const logoutEmployee = async (req, res) => {
                 { $set: { is_active: false } }
             );
         }
+
+        res.clearCookie('auth_token', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
+        });
 
         res.json({
             message: 'Logged out successfully',
@@ -331,5 +381,5 @@ const requestLoginPermission = async (req, res) => {
     }
 };
 
-module.exports = { registerEmployee, loginEmployee, logoutEmployee, changePassword, requestLoginPermission };
+module.exports = { registerEmployee, loginEmployee, logoutEmployee, changePassword, requestLoginPermission, getMe };
 

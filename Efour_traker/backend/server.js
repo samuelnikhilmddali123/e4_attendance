@@ -3,6 +3,12 @@ const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
+<<<<<<< HEAD
+=======
+const http = require('http');
+const cookieParser = require('cookie-parser');
+const { Server } = require("socket.io");
+>>>>>>> 9d3833c (feat: implement webview session persistence with httponly cookies)
 const connectDB = require('./config/db');
 
 // Load environment variables
@@ -10,7 +16,45 @@ dotenv.config();
 
 const app = express();
 
+<<<<<<< HEAD
 // 1. Hardened CORS for production/localhost testing
+=======
+// Connect to Database and Seed/Fix Admin
+connectDB().then(async () => {
+    console.log('[SYSTEM] MongoDB Connected Successfully');
+    try {
+        const Employee = require('./models/Employee');
+
+        // Find ADMIN001 and always reset password to 'efour123' to ensure login works
+        let admin = await Employee.findOne({ emp_no: 'ADMIN001' });
+
+        if (!admin) {
+            console.log('[SEED] Creating fresh ADMIN001...');
+            await Employee.create({
+                emp_no: 'ADMIN001',
+                name: 'admin',
+                full_name: 'EFOUR Administrator',
+                email: 'admin@efour.com',
+                password: 'efour123',
+                role: 'admin',
+                status: 'active'
+            });
+            console.log('[SEED] ✅ Admin created: ADMIN001 / efour123');
+        } else {
+            console.log('[SEED] Resetting ADMIN001 password to ensure connectivity...');
+            admin.password = 'efour123'; // Pre-save hook will hash this
+            await admin.save();
+            console.log('[SEED] ✅ ADMIN001 password reset to: efour123');
+        }
+    } catch (err) {
+        console.error('[SEED] Seeding Error:', err.message);
+    }
+}).catch(err => {
+    console.error('[SYSTEM] ❌ DB Connection Failed:', err.message);
+});
+
+// Middleware
+>>>>>>> 9d3833c (feat: implement webview session persistence with httponly cookies)
 app.use(cors({
     origin: true, // Mirror request origin (best for localhost + deployment)
     credentials: true,
@@ -29,13 +73,33 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+app.use(cookieParser());
 app.use(morgan('dev'));
 
 // 3. Database Connection Middleware (Ensures warm connection on every serverless invocation)
 app.use(async (req, res, next) => {
     try {
+<<<<<<< HEAD
         await connectDB();
         next();
+=======
+        const Employee = require('./models/Employee');
+
+        // Remove existing to force a re-save with new hash
+        await Employee.deleteOne({ emp_no: 'ADMIN001' });
+
+        const admin = await Employee.create({
+            emp_no: 'ADMIN001',
+            name: 'admin',
+            full_name: 'EFOUR Administrator',
+            email: 'admin@efour.com',
+            password: 'efour123', // Model handles hashing
+            role: 'admin',
+            status: 'active'
+        });
+
+        res.json({ success: true, message: 'Admin recreated with correct password', admin_id: admin.emp_no });
+>>>>>>> 9d3833c (feat: implement webview session persistence with httponly cookies)
     } catch (err) {
         console.error('[SYSTEM] DB Connection Error during request:', err.message);
         return res.status(503).json({

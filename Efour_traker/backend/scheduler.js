@@ -58,7 +58,41 @@ const initScheduler = (io) => {
         }
     });
 
-    console.log('[SCHEDULER] Scheduler initialized (Job set for 13:30 UTC / 19:00 IST)');
+    // Run every 2 minutes to check WiFi connection drops
+    cron.schedule('*/2 * * * *', async () => {
+        try {
+            const threeMinutesAgo = Date.now() - (3 * 60 * 1000);
+
+            const disconnectedAttendances = await Attendance.find({
+                logout_time: null,
+                is_on_wifi: true,
+                last_ping: { $lt: threeMinutesAgo }
+            });
+
+            for (const record of disconnectedAttendances) {
+                record.is_on_wifi = false;
+                record.wifi_history.push({
+                    status: 'Disconnected',
+                    timestamp: Date.now()
+                });
+                await record.save();
+
+                console.log(`[SCHEDULER] Marked ${record.emp_no} as Disconnected (Ping timeout)`);
+
+                if (io) {
+                    io.emit('employee_wifi_status_changed', {
+                        emp_no: record.emp_no,
+                        is_on_wifi: false,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('[SCHEDULER] Error in ping timeout job:', error);
+        }
+    });
+
+    console.log('[SCHEDULER] Scheduler initialized (Job set for 13:30 UTC / 19:00 IST and WiFi Ping check)');
 };
 
 module.exports = initScheduler;

@@ -95,7 +95,8 @@ const AdminDashboard = () => {
 
     if (loading) return <div className="p-10 text-center text-gray-400">Loading Dashboard...</div>;
 
-    const activeNowList = todayReport.filter(r => r.login_time !== 'N/A' && r.logout_time === 'N/A');
+    // Filter for Active online sessions
+    const activeNowList = todayReport.filter(r => r.login_time !== 'N/A' && r.logout_time === 'N/A' && r.is_on_wifi !== false);
     const activeNow = activeNowList.length;
     const presentToday = todayReport.filter(r => r.login_time !== 'N/A').length;
 
@@ -204,6 +205,7 @@ const AdminDashboard = () => {
                         <tbody className="divide-y divide-gray-50">
                             {todayReport.map((r, i) => {
                                 const isActive = r.login_time !== 'N/A' && r.logout_time === 'N/A';
+                                const isDisconnected = isActive && r.is_on_wifi === false;
                                 const isAbsent = r.login_time === 'N/A';
                                 return (
                                     <tr key={i} className={`hover:bg-gray-50 transition-colors ${isAbsent ? 'opacity-50' : ''}`}>
@@ -227,6 +229,8 @@ const AdminDashboard = () => {
                                         <td className="py-3 px-2">
                                             {isAbsent ? (
                                                 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-gray-100 text-gray-400">Absent</span>
+                                            ) : isDisconnected ? (
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-amber-100 text-amber-700">Disconnected</span>
                                             ) : isActive ? (
                                                 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-teal-100 text-teal-700">Online</span>
                                             ) : (

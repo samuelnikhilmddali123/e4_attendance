@@ -124,7 +124,8 @@ const getDailyReports = async (req, res) => {
                 return {
                     login: formatTime(att.login_time),
                     logout: att.logout_time ? formatTime(att.logout_time) : (isFilterToday && isPastSevenPM ? formatTime(sevenPMIST) : 'N/A'),
-                    is_active: !att.logout_time && !(isFilterToday && isPastSevenPM)
+                    is_active: !att.logout_time && !(isFilterToday && isPastSevenPM),
+                    is_on_wifi: att.is_on_wifi !== undefined ? att.is_on_wifi : true
                 };
             });
 
@@ -157,7 +158,8 @@ const getDailyReports = async (req, res) => {
                 logout_time: sessions.length > 0 ? sessions[sessions.length - 1].logout : 'N/A',
                 sessions,
                 working_hours,
-                is_half_day
+                is_half_day,
+                is_on_wifi: sessions.length > 0 ? sessions[sessions.length - 1].is_on_wifi : false
             };
         });
 
@@ -206,6 +208,7 @@ const createEmployee = async (req, res) => {
             return res.status(400).json({ message: 'Employee ID or email already exists' });
         }
 
+<<<<<<< HEAD
         // Check Face Uniqueness
         if (is_face_enabled && face_descriptor && face_descriptor.length > 0) {
             const allFaceUsers = await Employee.find({ is_face_enabled: true });
@@ -227,6 +230,8 @@ const createEmployee = async (req, res) => {
             }
         }
 
+=======
+>>>>>>> 9d3833c (feat: implement webview session persistence with httponly cookies)
         const employee = new Employee({
             emp_no,
             name,
