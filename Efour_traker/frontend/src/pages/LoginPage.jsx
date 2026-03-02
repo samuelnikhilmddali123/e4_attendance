@@ -32,19 +32,19 @@ const LoginPage = () => {
     // Handle Socket for Login Request
     useEffect(() => {
         if (showRequestModal && empNo) {
-            const newSocket = io('https://e4-attendance-2uoj.vercel.app');
+            // NOTE: Sockets are disabled because the backend is hosted on Vercel Serverless
+            // which does not support persistent WebSockets, causing 404 polling errors.
+            // const newSocket = io('https://e4-attendance-2uoj.vercel.app');
+            // newSocket.emit('join_room', empNo.trim().toUpperCase());
+            // newSocket.on('login_request_result', (data) => {
+            //     if (data.status === 'Approved') {
+            //         setRequestStatus({ type: 'success', message: 'Request approved! You can now log in.' });
+            //     } else if (data.status === 'Rejected') {
+            //         setRequestStatus({ type: 'error', message: 'Your login request was rejected by admin.' });
+            //     }
+            // });
 
-            newSocket.emit('join_room', empNo.trim().toUpperCase());
-
-            newSocket.on('login_request_result', (data) => {
-                if (data.status === 'Approved') {
-                    setRequestStatus({ type: 'success', message: 'Request approved! You can now log in.' });
-                } else if (data.status === 'Rejected') {
-                    setRequestStatus({ type: 'error', message: 'Your login request was rejected by admin.' });
-                }
-            });
-
-            return () => newSocket.disconnect();
+            // return () => newSocket.disconnect();
         }
     }, [showRequestModal, empNo]);
 

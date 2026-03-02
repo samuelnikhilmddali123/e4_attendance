@@ -45,20 +45,20 @@ export const AuthProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        let newSocket;
+        let newSocket = null;
         if (user && user.emp_no) {
-            newSocket = io('https://e4-attendance-2uoj.vercel.app');
-            setSocket(newSocket);
-
-            newSocket.emit('join_room', user.emp_no);
-
-            newSocket.on('force_logout', (data) => {
-                alert(data.message);
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                setUser(null);
-                window.location.href = '/login?reason=concurrent_login';
-            });
+            // NOTE: Sockets are disabled because the backend is hosted on Vercel Serverless
+            // which does not support persistent WebSockets, causing 404 polling errors.
+            // newSocket = io('https://e4-attendance-2uoj.vercel.app');
+            // setSocket(newSocket);
+            // newSocket.emit('join_room', user.emp_no);
+            // newSocket.on('force_logout', (data) => {
+            //     alert(data.message);
+            //     localStorage.removeItem('token');
+            //     localStorage.removeItem('user');
+            //     setUser(null);
+            //     window.location.href = '/login?reason=concurrent_login';
+            // });
         }
 
         return () => {
