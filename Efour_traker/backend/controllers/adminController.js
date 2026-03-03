@@ -112,14 +112,12 @@ const getDailyReports = async (req, res) => {
                 let loginTime = new Date(att.login_time);
                 let logoutTime = att.logout_time ? new Date(att.logout_time) : (isFilterToday && isPastSevenPM ? sevenPMIST : null);
 
-                let durationMs = 0;
-                if (loginTime && logoutTime) {
-                    // Cap duration at 7 PM
-                    const effectiveLogout = logoutTime > sevenPMIST && isFilterToday ? sevenPMIST : logoutTime;
-                    durationMs = effectiveLogout - loginTime;
-                    if (durationMs < 0) durationMs = 0;
-                    totalMs += durationMs;
-                }
+                // Use the accumulated duration from heartbeat if available, otherwise fallback to basic calc
+                let durationMs = att.total_duration_ms ||
+                    (logoutTime ? logoutTime - loginTime : 0);
+
+                if (durationMs < 0) durationMs = 0;
+                totalMs += durationMs;
 
                 return {
                     login: formatTime(att.login_time),
@@ -176,7 +174,9 @@ const getAnalytics = async (req, res) => {
 
         const empWorkingHours = {};
         attendances.forEach(a => {
-            const diffHrs = (new Date(a.logout_time) - new Date(a.login_time)) / 3600000;
+            const durationMs = a.total_duration_ms ||
+                (a.logout_time ? new Date(a.logout_time) - new Date(a.login_time) : 0);
+            const diffHrs = durationMs / 3600000;
             empWorkingHours[a.emp_no] = (empWorkingHours[a.emp_no] || 0) + diffHrs;
         });
 

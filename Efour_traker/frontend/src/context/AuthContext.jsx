@@ -72,11 +72,11 @@ export const AuthProvider = ({ children }) => {
             console.log('[PRESENCE] Starting heartbeat for:', user.emp_no);
 
             // Send immediate heartbeat on mount
-            api.post('/utils/heartbeat').catch(e => console.error('[PRESENCE] Initial heartbeat failed:', e));
+            api.post('/utils/heartbeat', { is_on_wifi: !!currentSsid }).catch(e => console.error('[PRESENCE] Initial heartbeat failed:', e));
 
             const interval = setInterval(async () => {
                 try {
-                    await api.post('/utils/heartbeat');
+                    await api.post('/utils/heartbeat', { is_on_wifi: !!currentSsid });
                 } catch (e) {
                     console.error('[PRESENCE] Heartbeat failed:', e.message);
                 }

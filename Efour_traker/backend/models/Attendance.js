@@ -39,6 +39,10 @@ const attendanceSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    total_duration_ms: {
+        type: Number,
+        default: 0
+    },
     wifi_history: [{
         status: { type: String, enum: ['Connected', 'Disconnected'] },
         timestamp: { type: Date, default: Date.now }
