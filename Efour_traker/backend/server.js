@@ -97,10 +97,12 @@ app.use((req, res) => {
 // Error Handler
 app.use((err, req, res, next) => {
     const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-    console.error(`[ERROR] ${err.message}\n${err.stack}`);
+    console.error(`[SYSTEM-ERROR] ${err.message}\n${err.stack}`);
     res.status(statusCode).json({
         message: err.message,
-        stack: process.env.NODE_ENV === 'production' ? '🥞' : err.stack
+        error: true,
+        stack: err.stack, // Show stack in development/troubleshooting
+        path: req.originalUrl
     });
 });
 

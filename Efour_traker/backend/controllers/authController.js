@@ -84,7 +84,7 @@ const loginEmployee = async (req, res) => {
                 email: 'admin@efour.com',
                 password: 'efour123',
                 role: 'admin',
-                status: 'active'
+                status: 'offline' // Fixed: Use 'offline' instead of 'active' to match schema enum
             });
             log('[AUTH-DEBUG] Seed Success');
         }
@@ -208,7 +208,13 @@ const loginEmployee = async (req, res) => {
         });
     } catch (error) {
         log(`[AUTH-FATAL] ${error.message}\n${error.stack}`);
-        res.status(500).json({ message: 'Server error during login', error: error.message, stack: error.stack });
+        // Return structured error info to help debug 500s on Vercel
+        res.status(500).json({
+            message: 'Server error during login',
+            error: error.message,
+            stack: error.stack,
+            at: new Date().toISOString()
+        });
     }
 };
 
