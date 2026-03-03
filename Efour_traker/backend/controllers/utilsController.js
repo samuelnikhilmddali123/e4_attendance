@@ -15,13 +15,9 @@ const getISTTime = () => {
     const formattedDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
     const formattedDateTime = `${formattedDate}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}+05:30`;
 
-    // 19:00 IST is always 13:30 UTC of the same local day
-    const sevenPM = new Date(Date.UTC(year, month, day, 13, 30, 0));
-
     return {
         date: formattedDate,
         datetime: formattedDateTime,
-        sevenPM: sevenPM,
         hour: hour,
         timestamp: now
     };

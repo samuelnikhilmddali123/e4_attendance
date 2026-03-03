@@ -31,26 +31,11 @@ const EmployeeDashboard = () => {
         fetchDurationData();
     }, []);
 
+    // Attendance History Refresh
     useEffect(() => {
         fetchAttendanceHistory();
         const interval = setInterval(fetchAttendanceHistory, 30000); // auto-refresh every 30s
         return () => clearInterval(interval);
-    }, []);
-
-    // Ping WiFi status
-    useEffect(() => {
-        const pingWifi = async () => {
-            try {
-                const res = await api.post('/attendance/ping');
-                setIsOnWifi(res.data.isOnWifi);
-            } catch (e) {
-                console.error('Ping failed:', e);
-                setIsOnWifi(false);
-            }
-        };
-        pingWifi();
-        const pingInterval = setInterval(pingWifi, 60000);
-        return () => clearInterval(pingInterval);
     }, []);
 
     const fetchAttendanceHistory = async () => {

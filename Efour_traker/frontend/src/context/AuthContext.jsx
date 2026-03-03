@@ -58,6 +58,40 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const [socket, setSocket] = useState(null);
+    const [heartbeatInterval, setHeartbeatInterval] = useState(null);
+
+    // Heartbeat Presence Tracking
+    useEffect(() => {
+        // Clear old interval if it exists
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            setHeartbeatInterval(null);
+        }
+
+        if (user && user.emp_no && user.role === 'employee') {
+            console.log('[PRESENCE] Starting heartbeat for:', user.emp_no);
+
+            // Send immediate heartbeat on mount
+            api.post('/utils/heartbeat').catch(e => console.error('[PRESENCE] Initial heartbeat failed:', e));
+
+            const interval = setInterval(async () => {
+                try {
+                    await api.post('/utils/heartbeat');
+                } catch (e) {
+                    console.error('[PRESENCE] Heartbeat failed:', e.message);
+                }
+            }, 10000); // 10 seconds
+
+            setHeartbeatInterval(interval);
+        }
+
+        return () => {
+            if (heartbeatInterval) {
+                console.log('[PRESENCE] Clearing heartbeat interval');
+                clearInterval(heartbeatInterval);
+            }
+        };
+    }, [user?.emp_no]); // Only re-run if employee ID changes
 
     useEffect(() => {
         let newSocket = null;

@@ -12,9 +12,6 @@ const LoginPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
-    const [showRequestModal, setShowRequestModal] = useState(false);
-    const [requestReason, setRequestReason] = useState('');
-    const [requestStatus, setRequestStatus] = useState(null);
     const { login, finalizeLogin } = useContext(AuthContext);
     const [faceVerifyData, setFaceVerifyData] = useState(null);
     const [loginResult, setLoginResult] = useState(null);
@@ -29,24 +26,6 @@ const LoginPage = () => {
         }
     }, [searchParams]);
 
-    // Handle Socket for Login Request
-    useEffect(() => {
-        if (showRequestModal && empNo) {
-            // NOTE: Sockets are disabled because the backend is hosted on Vercel Serverless
-            // which does not support persistent WebSockets, causing 404 polling errors.
-            // const newSocket = io('https://e4-attendance-2uoj.vercel.app');
-            // newSocket.emit('join_room', empNo.trim().toUpperCase());
-            // newSocket.on('login_request_result', (data) => {
-            //     if (data.status === 'Approved') {
-            //         setRequestStatus({ type: 'success', message: 'Request approved! You can now log in.' });
-            //     } else if (data.status === 'Rejected') {
-            //         setRequestStatus({ type: 'error', message: 'Your login request was rejected by admin.' });
-            //     }
-            // });
-
-            // return () => newSocket.disconnect();
-        }
-    }, [showRequestModal, empNo]);
 
     const handleLoginSuccess = (result, tokens = null) => {
         if (tokens) {
@@ -55,8 +34,6 @@ const LoginPage = () => {
 
         if (result.user?.role === 'admin' || result.role === 'admin') {
             navigate('/admin');
-        } else if (result.isRestricted) {
-            navigate('/restricted-access');
         } else {
             navigate('/dashboard');
         }
@@ -81,24 +58,10 @@ const LoginPage = () => {
             handleLoginSuccess(result, { token: result.token, userData: result.userData });
         } else {
             setError(result.message);
-            if (result.data?.restricted) {
-                setShowRequestModal(true);
-            }
         }
         setIsSubmitting(false);
     };
 
-    const handleRequestSubmit = async (e) => {
-        e.preventDefault();
-        setRequestStatus({ type: 'loading', message: 'Submitting request...' });
-        try {
-            const api = (await import('../services/api')).default;
-            await api.post('/auth/login-request', { emp_no: empNo, reason: requestReason });
-            setRequestStatus({ type: 'success', message: 'Request submitted successfully. Please wait for admin approval.' });
-        } catch (err) {
-            setRequestStatus({ type: 'error', message: err.response?.data?.message || 'Failed to submit request' });
-        }
-    };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
@@ -224,75 +187,6 @@ const LoginPage = () => {
                 </div>
             </motion.div>
 
-            <AnimatePresence>
-                {showRequestModal && (
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full -mr-16 -mt-16 z-0"></div>
-
-                            <div className="relative z-10">
-                                <div className="text-center mb-6">
-                                    <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner border border-amber-100">
-                                        <AlertCircle className="w-8 h-8" />
-                                    </div>
-                                    <h2 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Restricted Hours</h2>
-                                    <p className="text-slate-500 mt-2 text-sm font-medium">Logins are restricted after 7:00 PM IST. Please request approval.</p>
-                                </div>
-
-                                {requestStatus?.message ? (
-                                    <div className={`p-4 rounded-2xl mb-6 text-xs font-bold leading-relaxed border ${requestStatus.type === 'success' ? 'bg-green-50 text-green-700 border-green-100' :
-                                        requestStatus.type === 'error' ? 'bg-red-50 text-red-700 border-red-100' :
-                                            'bg-teal-50 text-teal-700 border-teal-100'
-                                        }`}>
-                                        {requestStatus.message}
-                                        {requestStatus.type === 'success' && (
-                                            <div className="mt-3 flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></div>
-                                                <span className="text-green-600 uppercase tracking-widest text-[10px]">Awaiting Admin Action</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <form onSubmit={handleRequestSubmit} className="space-y-4">
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Reason for Session</label>
-                                            <textarea
-                                                required
-                                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all text-sm font-medium resize-none"
-                                                placeholder="e.g., Completing urgent client deliverables"
-                                                rows="3"
-                                                value={requestReason}
-                                                onChange={(e) => setRequestReason(e.target.value)}
-                                            ></textarea>
-                                        </div>
-                                        <button
-                                            type="submit"
-                                            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black hover:bg-slate-800 transition-all uppercase tracking-widest text-sm shadow-lg shadow-slate-900/10"
-                                        >
-                                            Request Access
-                                        </button>
-                                    </form>
-                                )}
-
-                                <button
-                                    onClick={() => {
-                                        setShowRequestModal(false);
-                                        setRequestStatus(null);
-                                    }}
-                                    className="w-full mt-4 py-2 text-slate-400 font-bold hover:text-slate-600 transition-all text-xs uppercase tracking-widest"
-                                >
-                                    Go Back
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
         </div>
     );
 };

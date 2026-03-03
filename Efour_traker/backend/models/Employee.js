@@ -39,8 +39,12 @@ const employeeSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'inactive'],
-        default: 'active'
+        enum: ['online', 'offline'],
+        default: 'offline'
+    },
+    last_seen: {
+        type: Date,
+        default: Date.now
     },
     created_at: {
         type: Date,

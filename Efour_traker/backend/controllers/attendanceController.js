@@ -3,23 +3,17 @@ const { getISTTime } = require('./utilsController');
 
 // Helper to format attendance records
 const formatAttendanceRecords = (attendanceRows) => {
-    const istTime = getISTTime();
-    const sevenPMIST = istTime.sevenPM;
     const now = new Date();
 
     return attendanceRows.map(record => {
         let duration = null;
         const login = new Date(record.login_time);
-
-        // Use logout_time if available, otherwise if it's past 7pm use 7pm, otherwise use current time
-        let logout = record.logout_time ? new Date(record.logout_time) : (now > sevenPMIST ? sevenPMIST : null);
+        let logout = record.logout_time ? new Date(record.logout_time) : null;
 
         if (login && logout) {
             try {
                 if (!isNaN(login.getTime()) && !isNaN(logout.getTime())) {
-                    // Cap end time at 7 PM IST
-                    const effectiveLogout = logout > sevenPMIST ? sevenPMIST : logout;
-                    const diffMs = effectiveLogout - login;
+                    const diffMs = logout - login;
                     if (diffMs > 0) {
                         const diffHrs = Math.floor(diffMs / 3600000);
                         const diffMins = Math.floor((diffMs % 3600000) / 60000);
@@ -38,8 +32,8 @@ const formatAttendanceRecords = (attendanceRows) => {
             login_time: record.login_time,
             logout_time: record.logout_time,
             date: record.date,
-            duration: duration || (record.login_time && !record.logout_time && now < sevenPMIST ? "Running" : (duration || "N/A")),
-            session_status: record.session_status || (record.logout_time ? 'Completed' : (now > sevenPMIST ? 'Frozen' : 'Active')),
+            duration: duration || (record.login_time && !record.logout_time ? "Running" : (duration || "N/A")),
+            session_status: record.session_status || (record.logout_time ? 'Completed' : 'Active'),
             logout_reason: record.logout_reason,
             device_info: record.device_info
         };
@@ -86,7 +80,6 @@ const getWorkDuration = async (req, res) => {
     try {
         const istTime = getISTTime();
         const today = istTime.date;
-        const sevenPMIST = istTime.sevenPM;
 
         // Find all attendance records for today
         const attendanceRows = await Attendance.find({
@@ -99,18 +92,12 @@ const getWorkDuration = async (req, res) => {
         }
 
         const now = new Date();
-        const effectiveNow = now > sevenPMIST ? sevenPMIST : now;
 
         const intervals = attendanceRows.map(record => {
             const start = new Date(record.login_time).getTime();
-            let end = record.logout_time ? new Date(record.logout_time).getTime() : effectiveNow.getTime();
+            let end = record.logout_time ? new Date(record.logout_time).getTime() : now.getTime();
 
-            // Cap start time if it was somehow after 7 PM (shouldn't happen but for safety)
-            const effectiveStart = Math.min(start, sevenPMIST.getTime());
-            // Cap end time at 7 PM IST
-            const effectiveEnd = Math.min(end, sevenPMIST.getTime());
-
-            return { start: effectiveStart, end: effectiveEnd };
+            return { start, end };
         }).filter(interval => !isNaN(interval.start) && !isNaN(interval.end));
 
         if (intervals.length === 0) {
@@ -157,63 +144,4 @@ const getWorkDuration = async (req, res) => {
     }
 };
 
-// @desc    Ping to verify WiFi connectivity
-// @route   POST /api/attendance/ping
-const pingWiFi = async (req, res) => {
-    const { emp_no } = req.user;
-    const current_ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
-
-    try {
-        const istTime = getISTTime();
-        const today = istTime.date;
-
-        const record = await Attendance.findOne({
-            emp_no,
-            date: today,
-            logout_time: null
-        }).sort({ login_time: -1 });
-
-        if (!record) {
-            return res.json({ success: false, message: 'No active session found', isOnWifi: false });
-        }
-
-        let referenceIp = record.wifi_ip;
-        if (!referenceIp && current_ip) {
-            record.wifi_ip = current_ip;
-            referenceIp = current_ip;
-        }
-
-        let isOnWifi = false;
-        if (referenceIp && current_ip && referenceIp === current_ip) {
-            isOnWifi = true;
-        }
-
-        const previousStatus = record.is_on_wifi;
-        record.last_ping = Date.now();
-        record.is_on_wifi = isOnWifi;
-
-        if (previousStatus !== isOnWifi) {
-            record.wifi_history.push({
-                status: isOnWifi ? 'Connected' : 'Disconnected',
-                timestamp: Date.now()
-            });
-
-            const io = req.app.get('io');
-            if (io) {
-                io.emit('employee_wifi_status_changed', {
-                    emp_no,
-                    is_on_wifi: isOnWifi,
-                    timestamp: Date.now()
-                });
-            }
-        }
-
-        await record.save();
-        res.json({ success: true, isOnWifi });
-    } catch (error) {
-        console.error('Ping WiFi Error:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-};
-
-module.exports = { getAttendanceHistory, getEmployeeAttendanceForAdmin, getWorkDuration, pingWiFi };
+module.exports = { getAttendanceHistory, getEmployeeAttendanceForAdmin, getWorkDuration };

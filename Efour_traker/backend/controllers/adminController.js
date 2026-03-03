@@ -63,7 +63,7 @@ const getEmployees = async (req, res) => {
             profile_picture: e.profile_picture,
             email: e.email,
             role: e.role,
-            status: activeEmpNos.has(e.emp_no) ? 'active' : 'inactive'
+            status: e.status || 'offline'
         }));
 
         res.json(result);

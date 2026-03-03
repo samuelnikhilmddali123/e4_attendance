@@ -149,7 +149,6 @@ const loginEmployee = async (req, res) => {
 
         log(`[AUTH-DEBUG] IST Time...`);
         const istTimeNow = getISTTime();
-        const isRestricted = false; // Forced to false to allow 24/7 login
 
         log(`[AUTH-DEBUG] Signing token...`);
         const session_token = crypto.randomBytes(32).toString('hex');
@@ -159,37 +158,34 @@ const loginEmployee = async (req, res) => {
             { expiresIn: '15m' } // Short-lived Access Token
         );
 
-        log(`[AUTH-DEBUG] Saving attendance...`);
         const ist = getISTTime();
-        if (!isRestricted) {
-            try {
-                await Attendance.updateMany({ emp_no: employee.emp_no, logout_time: null }, { $set: { logout_time: ist.timestamp, session_status: 'Forced Logout' } });
+        try {
+            await Attendance.updateMany({ emp_no: employee.emp_no, logout_time: null }, { $set: { logout_time: ist.timestamp, session_status: 'Forced Logout' } });
 
-                const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+            const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
 
-                await Attendance.create({
-                    emp_no: employee.emp_no,
-                    login_time: ist.timestamp,
-                    date: ist.date,
-                    session_status: 'Active',
-                    device_info: device_info || 'Unknown',
-                    wifi_ip: clientIp,
-                    is_on_wifi: true,
-                    last_ping: Date.now(),
-                    wifi_history: [{ status: 'Connected', timestamp: Date.now() }]
-                });
+            await Attendance.create({
+                emp_no: employee.emp_no,
+                login_time: ist.timestamp,
+                date: ist.date,
+                session_status: 'Active',
+                device_info: device_info || 'Unknown',
+                wifi_ip: clientIp,
+                is_on_wifi: true,
+                last_ping: Date.now(),
+                wifi_history: [{ status: 'Connected', timestamp: Date.now() }]
+            });
 
-                // Deactivate old sessions and create a new session record
-                await Session.updateMany({ emp_no: employee.emp_no, is_active: true }, { $set: { is_active: false } });
-                await Session.create({
-                    emp_no: employee.emp_no,
-                    session_token: session_token,
-                    device_info: device_info || 'Unknown'
-                });
+            // Deactivate old sessions and create a new session record
+            await Session.updateMany({ emp_no: employee.emp_no, is_active: true }, { $set: { is_active: false } });
+            await Session.create({
+                emp_no: employee.emp_no,
+                session_token: session_token,
+                device_info: device_info || 'Unknown'
+            });
 
-                log(`[AUTH-DEBUG] Attendance & Session saved`);
-            } catch (e) { log(`[AUTH-ERROR] Attendance fail: ${e.message}`); }
-        }
+            log(`[AUTH-DEBUG] Attendance & Session saved`);
+        } catch (e) { log(`[AUTH-ERROR] Attendance fail: ${e.message}`); }
 
         log(`[AUTH-DEBUG] Success`);
 
@@ -203,7 +199,6 @@ const loginEmployee = async (req, res) => {
         res.json({
             token,
             session_token,
-            isRestricted,
             user: {
                 emp_no: employee.emp_no,
                 role: employee.role,
@@ -235,8 +230,7 @@ const getMe = async (req, res) => {
                 profile_picture: employee.profile_picture,
                 is_face_enabled: employee.is_face_enabled || false,
                 face_descriptor: employee.face_descriptor || []
-            },
-            isRestricted: req.user.isRestricted
+            }
         });
     } catch (error) {
         console.error('Get Me Error:', error);
@@ -388,41 +382,5 @@ const changePassword = async (req, res) => {
     }
 };
 
-// @desc    Request login permission after hours
-// @route   POST /api/auth/login-request
-const requestLoginPermission = async (req, res) => {
-    const { emp_no, reason, device_info } = req.body;
-    const cleanEmpNo = emp_no?.trim().toUpperCase();
-
-    try {
-        const employee = await Employee.findOne({ emp_no: cleanEmpNo });
-        if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
-        }
-
-        // Check for existing pending request
-        const existingRequest = await LoginRequest.findOne({
-            emp_no: cleanEmpNo,
-            status: 'Pending'
-        });
-
-        if (existingRequest) {
-            return res.status(400).json({ message: 'You already have a pending login request.' });
-        }
-
-        const loginRequest = new LoginRequest({
-            emp_no: cleanEmpNo,
-            reason: reason || 'Late work requirement',
-            device_info: device_info || 'Unknown'
-        });
-
-        await loginRequest.save();
-        res.status(201).json({ message: 'Login request submitted successfully. Please wait for admin approval.' });
-    } catch (error) {
-        console.error('Login Request Error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
-module.exports = { registerEmployee, loginEmployee, logoutEmployee, changePassword, requestLoginPermission, getMe, refreshToken };
+module.exports = { registerEmployee, loginEmployee, logoutEmployee, changePassword, getMe, refreshToken };
 
