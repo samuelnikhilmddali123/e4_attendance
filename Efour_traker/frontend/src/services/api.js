@@ -1,12 +1,16 @@
 import axios from 'axios';
 
-// Force hardcode the backend URL to prevent relative path mapping in production
-const API_URL = 'https://e4-attendance-v9im.vercel.app/api/';
+// Use relative path if running on Vercel to leverage the proxy in vercel.json
+// Otherwise use the absolute URL for local/electron development
+const isVercel = window.location.hostname.includes('vercel.app');
+const API_URL = isVercel ? '/api/' : 'https://e4-attendance-2uoj.vercel.app/api/';
+
+console.log('[API] Environment:', isVercel ? 'Vercel (using proxy)' : 'Other (using absolute URL)');
 console.log('[API] Final Backend URL:', API_URL);
 
 const api = axios.create({
     baseURL: API_URL,
-    timeout: 10000,
+    timeout: 30000, // Increased to handle slow serverless cold starts
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
