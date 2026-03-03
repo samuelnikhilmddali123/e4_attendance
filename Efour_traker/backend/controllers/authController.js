@@ -1,6 +1,6 @@
 const Employee = require('../models/Employee');
 const Attendance = require('../models/Attendance');
-const LoginRequest = require('../models/LoginRequest');
+
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const { getISTTime, getServerTime } = require('./utilsController');
