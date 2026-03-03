@@ -32,8 +32,11 @@ const heartbeat = async (req, res) => {
             const lastPing = attendance.last_ping || attendance.login_time;
             const diffMs = now - lastPing;
 
-            // Only accumulate if the gap is small (e.g. < 45s) and WiFi is active
-            if (is_on_wifi && diffMs > 0 && diffMs < 45000) {
+            // Strict Accumulation: 
+            // 1. Must be on WiFi
+            // 2. Diff must be positive
+            // 3. Diff must be <= 15 seconds (prevents massive jumps if device goes to sleep and wakes up)
+            if (is_on_wifi && diffMs > 0 && diffMs <= 15000) {
                 attendance.total_duration_ms = (attendance.total_duration_ms || 0) + diffMs;
             }
 
@@ -53,4 +56,40 @@ const heartbeat = async (req, res) => {
     }
 };
 
-module.exports = { heartbeat };
+const checkNetworkStatus = async (req) => {
+    try {
+        const Settings = require('../models/Settings');
+        const settings = await Settings.findOne();
+
+        const allowedSsid = settings?.office_wifi_ssid;
+        const allowedIp = settings?.office_public_ip;
+        const wifi_ssid = req.body.wifi_ssid || req.query.wifi_ssid;
+
+        const clientIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || req.ip || '').split(',')[0].trim();
+
+        if (wifi_ssid) {
+            if (allowedSsid && allowedSsid !== 'Your_Office_WiFi_Name' && allowedSsid !== 'Efour_Net') {
+                if (wifi_ssid.trim() === allowedSsid.trim()) return true;
+                return false;
+            }
+            return true; // Default allow if no specific SSID configured
+        } else if (allowedIp && allowedIp.trim() !== '') {
+            if (clientIp === allowedIp.trim()) return true;
+            return false;
+        }
+
+        return true; // Fallback if no network restrictions are set
+    } catch (err) {
+        console.error('[NETWORK-CHECK-ERROR]', err);
+        return true; // Default open on error to prevent locking out
+    }
+};
+
+// @desc    Poll active network status
+// @route   GET /api/utils/network-check
+const networkCheck = async (req, res) => {
+    const is_on_wifi = await checkNetworkStatus(req);
+    res.json({ is_on_wifi });
+};
+
+module.exports = { heartbeat, networkCheck, checkNetworkStatus };

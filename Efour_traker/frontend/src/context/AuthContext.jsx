@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [currentSsid, setCurrentSsid] = useState(null);
+    const [isOnWifi, setIsOnWifi] = useState(true);
 
     useEffect(() => {
         // --- Native messaging for SSID ---
@@ -71,16 +72,31 @@ export const AuthProvider = ({ children }) => {
         if (user && user.emp_no && user.role === 'employee') {
             console.log('[PRESENCE] Starting heartbeat for:', user.emp_no);
 
-            // Send immediate heartbeat on mount
-            api.post('/utils/heartbeat', { is_on_wifi: !!currentSsid }).catch(e => console.error('[PRESENCE] Initial heartbeat failed:', e));
-
-            const interval = setInterval(async () => {
+            const sendHeartbeat = async () => {
+                let networkStatus = false;
                 try {
-                    await api.post('/utils/heartbeat', { is_on_wifi: !!currentSsid });
+                    const netRes = await api.get('/utils/network-check', {
+                        params: { wifi_ssid: currentSsid }
+                    });
+                    networkStatus = netRes.data.is_on_wifi;
+                } catch (e) {
+                    console.error('[PRESENCE] Network check failed', e);
+                    networkStatus = false; // Safe fallback: assume disconnected if check fails
+                }
+
+                setIsOnWifi(networkStatus);
+
+                try {
+                    await api.post('/utils/heartbeat', { is_on_wifi: networkStatus });
                 } catch (e) {
                     console.error('[PRESENCE] Heartbeat failed:', e.message);
                 }
-            }, 10000); // 10 seconds
+            };
+
+            // Send immediate heartbeat on mount
+            sendHeartbeat();
+
+            const interval = setInterval(sendHeartbeat, 10000); // 10 seconds
 
             setHeartbeatInterval(interval);
         }
@@ -194,7 +210,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, finalizeLogin, logout, updateUser }}>
+        <AuthContext.Provider value={{ user, loading, isOnWifi, login, finalizeLogin, logout, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

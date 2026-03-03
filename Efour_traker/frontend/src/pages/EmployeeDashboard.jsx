@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AttendanceCalendar from '../components/AttendanceCalendar';
 
 const EmployeeDashboard = () => {
-    const { user } = useContext(AuthContext);
+    const { user, isOnWifi } = useContext(AuthContext);
     const [loading, setLoading] = useState(true);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -16,7 +16,6 @@ const EmployeeDashboard = () => {
     // Attendance states
     const [attendanceHistory, setAttendanceHistory] = useState([]);
     const [firstLogin, setFirstLogin] = useState(null);
-    const [isOnWifi, setIsOnWifi] = useState(true);
 
     // Fetch first login time 
     useEffect(() => {
