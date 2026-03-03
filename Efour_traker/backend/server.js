@@ -11,6 +11,9 @@ dotenv.config();
 
 const app = express();
 
+// Trust proxy for Vercel/proxies to correctly populate req.ip
+app.set('trust proxy', true);
+
 // 1. Hardened CORS for production/localhost testing
 const allowedOrigins = [
     'https://e4-attendance-v9im.vercel.app',
@@ -58,7 +61,7 @@ app.use(async (req, res, next) => {
 
 // 4. Diagnostic/Health route
 app.get('/api/health', (req, res) => {
-    const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    const clientIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || req.ip || '').split(',')[0].trim();
     res.json({
         status: 'ok',
         version: '6.1-HYBRID-NET',

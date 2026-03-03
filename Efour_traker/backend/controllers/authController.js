@@ -110,7 +110,7 @@ const loginEmployee = async (req, res) => {
                 const allowedIp = settings?.office_public_ip;
 
                 // Detect Client IP (Vercel uses x-forwarded-for)
-                const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+                const clientIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || req.ip || '').split(',')[0].trim();
                 log(`[AUTH-NETWORK] Client IP: ${clientIp}, SSID: ${wifi_ssid || 'NONE'}`);
 
                 // 1. If SSID is provided (Native App), prioritize SSID check
@@ -162,7 +162,7 @@ const loginEmployee = async (req, res) => {
         try {
             await Attendance.updateMany({ emp_no: employee.emp_no, logout_time: null }, { $set: { logout_time: ist.timestamp, session_status: 'Forced Logout' } });
 
-            const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+            const clientIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || req.ip || '').split(',')[0].trim();
 
             await Attendance.create({
                 emp_no: employee.emp_no,
