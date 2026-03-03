@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }) => {
         if (user && user.emp_no) {
             // NOTE: Sockets are disabled because the backend is hosted on Vercel Serverless
             // which does not support persistent WebSockets, causing 404 polling errors.
-            // newSocket = io('https://e4-attendance-2uoj.vercel.app');
+            // newSocket = io('https://e4-attendance-v9im.vercel.app');
             // setSocket(newSocket);
             // newSocket.emit('join_room', user.emp_no);
             // newSocket.on('force_logout', (data) => {

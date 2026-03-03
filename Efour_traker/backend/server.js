@@ -14,6 +14,7 @@ const app = express();
 // 1. Hardened CORS for production/localhost testing
 const allowedOrigins = [
     'https://e4-attendance-v9im.vercel.app',
+    'https://e4-attendance-2uoj.vercel.app',
     'http://localhost:5173',
     'http://localhost:3000'
 ];
