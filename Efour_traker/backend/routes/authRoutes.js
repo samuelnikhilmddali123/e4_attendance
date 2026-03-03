@@ -5,6 +5,12 @@ const { protect } = require('../middleware/auth');
 
 router.post('/register', registerEmployee);
 router.post('/login', loginEmployee);
+router.get('/login', (req, res) => {
+    res.json({
+        message: 'Login endpoint is active. Please use POST method with emp_no and password.',
+        status: 'active'
+    });
+});
 router.post('/refresh', refreshToken);
 router.post('/logout', protect, logoutEmployee);
 router.put('/password', protect, changePassword);
