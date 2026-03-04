@@ -57,33 +57,10 @@ const LiveClock = () => {
                 setCurrentTime(new Intl.DateTimeFormat('en-IN', options).format(nowInIST));
             }
 
-            // 2. Update Work Duration & Handle Auto-Logout
+            // 2. Update Work Duration
             if (nowInIST) {
-                // Calculate 7 PM IST for today robustly
-                const year = nowInIST.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-                const sevenPMIST = new Date(`${year}T19:00:00+05:30`);
-
-                if (nowInIST >= sevenPMIST) {
-                    // Logic for employees
-                    if (user?.role?.toLowerCase() === 'employee' && !user.isRestricted) {
-                        // Force logout if not already in restricted mode
-                        // We use a small delay or flag to avoid race conditions
-                        if (!syncRef.current.loggedOut) {
-                            syncRef.current.loggedOut = true;
-                            console.log('Office hours ended. Triggering auto-logout...');
-                            logout();
-                        }
-                    }
-
-                    // Calculate how many seconds from sync until 7 PM
-                    const msUntilSevenPM = sevenPMIST.getTime() - syncRef.current.serverStartTime;
-                    const elapsedUntilSevenPM = Math.max(0, msUntilSevenPM / 1000);
-
-                    setWorkDuration(syncRef.current.workDurationStart + elapsedUntilSevenPM);
-                } else {
-                    const currentDuration = syncRef.current.workDurationStart + elapsedSinceSync;
-                    setWorkDuration(currentDuration);
-                }
+                const currentDuration = syncRef.current.workDurationStart + elapsedSinceSync;
+                setWorkDuration(currentDuration);
             } else {
                 const currentDuration = syncRef.current.workDurationStart + elapsedSinceSync;
                 setWorkDuration(currentDuration);
