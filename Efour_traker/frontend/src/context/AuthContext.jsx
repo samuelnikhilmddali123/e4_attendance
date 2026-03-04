@@ -98,7 +98,17 @@ export const AuthProvider = ({ children }) => {
 
             const interval = setInterval(sendHeartbeat, 10000); // 10 seconds
 
+            // Also listen for browser/device coming back online to recover instantly
+            window.addEventListener('online', sendHeartbeat);
+
             setHeartbeatInterval(interval);
+
+            // Cleanup
+            return () => {
+                console.log('[PRESENCE] Clearing heartbeat interval \u0026 listeners');
+                clearInterval(interval);
+                window.removeEventListener('online', sendHeartbeat);
+            };
         }
 
         return () => {
