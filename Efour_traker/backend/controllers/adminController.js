@@ -1,5 +1,6 @@
 const Employee = require('../models/Employee');
 const Attendance = require('../models/Attendance');
+const ProxyAttempt = require('../models/ProxyAttempt');
 const bcrypt = require('bcryptjs');
 const { getISTTime } = require('./utilsController');
 
@@ -403,6 +404,18 @@ const getEmployeeStatuses = async (req, res) => {
     }
 };
 
+// @desc    Get all proxy login attempts
+// @route   GET /api/admin/proxy-attempts
+const getProxyAttempts = async (req, res) => {
+    try {
+        const attempts = await ProxyAttempt.find().sort({ timestamp: -1 }).limit(100);
+        res.json(attempts);
+    } catch (error) {
+        console.error('Get Proxy Attempts Error:', error);
+        res.status(500).json({ message: 'Server error fetching logs' });
+    }
+};
+
 module.exports = {
     getEmployees,
     getDailyReports,
@@ -413,6 +426,7 @@ module.exports = {
     handleLoginRequest,
     forceLogoutAll,
     forceLogoutEmployee,
-    getEmployeeStatuses
+    getEmployeeStatuses,
+    getProxyAttempts
 };
 

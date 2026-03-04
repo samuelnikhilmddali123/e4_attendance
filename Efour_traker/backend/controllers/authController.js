@@ -7,6 +7,7 @@ const { getISTTime, getServerTime } = require('./utilsController');
 const crypto = require('crypto');
 const Session = require('../models/Session');
 const Settings = require('../models/Settings');
+const ProxyAttempt = require('../models/ProxyAttempt');
 
 // @desc    Register a new employee
 // @route   POST /api/auth/register
@@ -388,5 +389,71 @@ const changePassword = async (req, res) => {
     }
 };
 
-module.exports = { registerEmployee, loginEmployee, logoutEmployee, changePassword, getMe, refreshToken };
+// @desc    Log a proxy login attempt
+// @route   POST /api/auth/proxy-attempt
+const logProxyAttempt = async (req, res) => {
+    const { emp_no, face_descriptor, image_data, device_info } = req.body;
+    const clientIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || req.ip || '').split(',')[0].trim();
+
+    try {
+        // 1. Get the employee who tried to login
+        const loginEmployee = await Employee.findOne({ emp_no });
+        if (!loginEmployee) {
+            return res.status(404).json({ message: 'Login Employee not found' });
+        }
+
+        let detectedEmployee = null;
+        let minDistance = 1.0; // High initial distance
+
+        // 2. Scan ALL registered employees to see whose face it is
+        // NOTE: In a massive scale app, this would be optimized with a vector DB
+        const allEmployees = await Employee.find({ is_face_enabled: true, face_descriptor: { $exists: true, $not: { $size: 0 } } });
+
+        const incomingDescriptor = new Float32Array(face_descriptor);
+
+        for (const emp of allEmployees) {
+            if (emp.face_descriptor && emp.face_descriptor.length > 0) {
+                const targetDescriptor = new Float32Array(emp.face_descriptor);
+
+                // Manually calculate Euclidean Distance (Simple for 128-d vectors)
+                let sum = 0;
+                for (let i = 0; i < incomingDescriptor.length; i++) {
+                    sum += Math.pow(incomingDescriptor[i] - targetDescriptor[i], 2);
+                }
+                const dist = Math.sqrt(sum);
+
+                if (dist < 0.45 && dist < minDistance) {
+                    minDistance = dist;
+                    detectedEmployee = emp;
+                }
+            }
+        }
+
+        // 3. Create proxy log
+        const attempt = await ProxyAttempt.create({
+            login_employee_id: loginEmployee.emp_no,
+            login_employee_name: loginEmployee.full_name || loginEmployee.name,
+            detected_face_employee_id: detectedEmployee ? detectedEmployee.emp_no : 'Unknown Face',
+            detected_employee_name: detectedEmployee ? (detectedEmployee.full_name || detectedEmployee.name) : 'Unknown Person',
+            image_data: image_data, // Base64 string from frontend
+            device_info: device_info || 'Unknown',
+            ip_address: clientIp,
+            status: 'Proxy Attempt Detected'
+        });
+
+        console.log(`[SECURITY] Proxy attempt logged: ${loginEmployee.emp_no} tried login, but face looks like ${attempt.detected_face_employee_id}`);
+
+        res.status(201).json({
+            success: true,
+            message: 'Security log created',
+            detected: attempt.detected_employee_name
+        });
+
+    } catch (error) {
+        console.error('Log Proxy Attempt Error:', error);
+        res.status(500).json({ message: 'Server error logging attempt' });
+    }
+};
+
+module.exports = { registerEmployee, loginEmployee, logoutEmployee, changePassword, getMe, refreshToken, logProxyAttempt };
 

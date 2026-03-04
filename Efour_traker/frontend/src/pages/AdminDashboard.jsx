@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import {
-    Users, ClipboardList, LogOut, CheckCircle2, AlertCircle, Wifi, Save
+    Users, ClipboardList, LogOut, CheckCircle2, AlertCircle, Wifi, Save, ShieldAlert, Monitor
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 
 const AdminDashboard = () => {
     const [todayReport, setTodayReport] = useState([]);
+    const [proxyAttempts, setProxyAttempts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [terminating, setTerminating] = useState(false);
 
@@ -23,6 +24,7 @@ const AdminDashboard = () => {
     useEffect(() => {
         fetchAll();
         fetchWifiSettings();
+        fetchProxyAttempts();
 
         // Full report fetch every 30 seconds
         const interval = setInterval(fetchAll, 30000);
@@ -128,6 +130,15 @@ const AdminDashboard = () => {
             alert('Failed to update settings.');
         } finally {
             setSavingWifi(false);
+        }
+    };
+
+    const fetchProxyAttempts = async () => {
+        try {
+            const res = await api.get('/admin/proxy-attempts');
+            setProxyAttempts(res.data);
+        } catch (error) {
+            console.error('Failed to fetch proxy attempts:', error);
         }
     };
 
@@ -334,6 +345,86 @@ const AdminDashboard = () => {
                         <p>No employee records found</p>
                     </div>
                 )}
+            </div>
+            {/* Proxy Attempts Section */}
+            <div className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden">
+                <div className="p-6 bg-rose-50/50 border-b border-rose-100 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-lg font-bold text-rose-800 flex items-center gap-2">
+                            <ShieldAlert className="w-5 h-5" />
+                            Security Alert: Proxy Login Attempts
+                        </h3>
+                        <p className="text-xs text-rose-600 font-medium">System flagged these as face mismatches</p>
+                    </div>
+                </div>
+                <div className="p-6">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="border-b border-gray-100">
+                                    {['Captured Image', 'Login Attempt By', 'Person Detected', 'Device / IP', 'Time'].map(h => (
+                                        <th key={h} className="pb-3 px-2 text-xs font-bold text-gray-400 uppercase tracking-wider">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {proxyAttempts.map((attempt) => (
+                                    <tr key={attempt._id} className="hover:bg-rose-50/30 transition-colors">
+                                        <td className="py-3 px-2">
+                                            <div className="w-16 h-12 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                                                <img
+                                                    src={attempt.image_data}
+                                                    alt="Captured"
+                                                    className="w-full h-full object-cover cursor-zoom-in hover:scale-110 transition-transform"
+                                                    onClick={() => window.open().document.write(`<img src="${attempt.image_data}" />`)}
+                                                />
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-2">
+                                            <p className="font-semibold text-gray-800 text-sm">{attempt.login_employee_name}</p>
+                                            <p className="text-[10px] text-gray-400 font-mono">ID: {attempt.login_employee_id}</p>
+                                        </td>
+                                        <td className="py-3 px-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${attempt.detected_face_employee_id === 'Unknown Face' ? 'bg-gray-100 text-gray-500' : 'bg-rose-100 text-rose-700'}`}>
+                                                    {attempt.detected_employee_name}
+                                                </div>
+                                            </div>
+                                            {attempt.detected_face_employee_id !== 'Unknown Face' && (
+                                                <p className="text-[10px] text-gray-400 font-mono mt-1">ID: {attempt.detected_face_employee_id}</p>
+                                            )}
+                                        </td>
+                                        <td className="py-3 px-2">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-1 text-xs text-gray-600">
+                                                    <Monitor className="w-3 h-3" />
+                                                    <span className="truncate max-w-[150px]" title={attempt.device_info}>
+                                                        {attempt.device_info.includes('Windows') ? 'Windows PC' :
+                                                            attempt.device_info.includes('Android') ? 'Android Device' :
+                                                                attempt.device_info.includes('iPhone') ? 'iPhone' : 'Mobile/Web'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[10px] text-gray-400 font-mono italic">{attempt.ip_address}</p>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-2 text-xs text-gray-500">
+                                            {new Intl.DateTimeFormat('en-IN', {
+                                                timeZone: 'Asia/Kolkata',
+                                                dateStyle: 'short',
+                                                timeStyle: 'short'
+                                            }).format(new Date(attempt.timestamp))}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {proxyAttempts.length === 0 && (
+                            <div className="text-center py-10 text-slate-300">
+                                <p className="text-sm font-medium">No proxy attempts detected</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

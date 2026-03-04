@@ -88,6 +88,19 @@ const LoginPage = () => {
                                 label="Verification Required"
                                 targetDescriptor={faceVerifyData}
                                 onVerify={(matched) => matched && handleLoginSuccess(loginResult, pendingLoginTokens)}
+                                onMismatch={async (descriptor, image) => {
+                                    try {
+                                        await api.post('/auth/proxy-attempt', {
+                                            emp_no: empNo,
+                                            face_descriptor: descriptor,
+                                            image_data: image,
+                                            device_info: navigator.userAgent
+                                        });
+                                        console.log('[SECURITY] Proxy attempt reported to server');
+                                    } catch (err) {
+                                        console.error('Failed to report proxy attempt:', err);
+                                    }
+                                }}
                             />
                             <button
                                 onClick={() => { setFaceVerifyData(null); setLoginResult(null); }}

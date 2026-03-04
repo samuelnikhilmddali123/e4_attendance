@@ -10,12 +10,14 @@ const {
     handleLoginRequest,
     forceLogoutAll,
     forceLogoutEmployee,
-    getEmployeeStatuses
+    getEmployeeStatuses,
+    getProxyAttempts
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/auth');
 
 router.get('/employees', protect, admin, getEmployees);
 router.get('/employees/status', protect, admin, getEmployeeStatuses);
+router.get('/proxy-attempts', protect, admin, getProxyAttempts);
 router.post('/employees', protect, admin, createEmployee);
 router.delete('/employees/:emp_no', protect, admin, deleteEmployee);
 router.get('/reports/daily', protect, admin, getDailyReports);

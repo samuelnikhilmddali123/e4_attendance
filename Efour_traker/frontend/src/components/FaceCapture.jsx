@@ -2,14 +2,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 
-const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, label = "Capture Face" }) => {
+const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, onMismatch = null, label = "Capture Face" }) => {
     const videoRef = useRef();
+    const canvasRef = useRef();
     const [modelsLoaded, setModelsLoaded] = useState(false);
     const [stream, setStream] = useState(null);
     const [isCapturing, setIsCapturing] = useState(false);
-    const [error, setError] = useState(null);
-    const [status, setStatus] = useState('Initializing...');
-    const scanStartTime = useRef(null);
+    const syncRef = useRef({
+        lastMismatchDescriptor: null,
+        lastMismatchImage: null
+    });
     const matchCount = useRef(0);
     const enrollMatchCount = useRef(0);
 
@@ -56,6 +58,20 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, labe
         }
     };
 
+    const captureFrame = () => {
+        if (!videoRef.current || !canvasRef.current) return null;
+        const canvas = canvasRef.current;
+        const video = videoRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        // Mirror the image for the capture to match the display
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', 0.8);
+    };
+
     useEffect(() => {
         if (isCapturing && videoRef.current && stream) {
             videoRef.current.srcObject = stream;
@@ -72,6 +88,12 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, labe
                 stopCamera();
                 setError('Invalid face detected. Verification failed.');
                 setStatus('Verification Failed');
+
+                // If we have a mismatch descriptor, log it as a proxy attempt
+                if (syncRef.current.lastMismatchDescriptor && onMismatch) {
+                    onMismatch(syncRef.current.lastMismatchDescriptor, syncRef.current.lastMismatchImage);
+                }
+
                 return; // Stop the loop completely
             }
         }
@@ -100,6 +122,11 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, labe
                     }
                 } else {
                     matchCount.current = 0;
+
+                    // Capture mismatch for logging
+                    syncRef.current.lastMismatchDescriptor = Array.from(detections.descriptor);
+                    syncRef.current.lastMismatchImage = captureFrame();
+
                     const timeRemaining = Math.ceil((10000 - (Date.now() - scanStartTime.current)) / 1000);
                     setStatus(`Face found, but not a match. Retrying... (${timeRemaining}s)`);
                 }
@@ -267,6 +294,7 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, labe
                             Cancel
                         </button>
                     </div>
+                    <canvas ref={canvasRef} className="hidden" />
                 </div>
             )}
 

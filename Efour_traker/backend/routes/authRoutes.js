@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { registerEmployee, loginEmployee, logoutEmployee, changePassword, getMe, refreshToken } = require('../controllers/authController');
+const { registerEmployee, loginEmployee, logoutEmployee, changePassword, getMe, refreshToken, logProxyAttempt } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
 router.post('/register', registerEmployee);
 router.post('/login', loginEmployee);
+router.post('/proxy-attempt', logProxyAttempt);
 router.get('/login', (req, res) => {
     res.json({
         message: 'Login endpoint is active. Please use POST method with emp_no and password.',
