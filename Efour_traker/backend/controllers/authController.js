@@ -316,9 +316,11 @@ const logoutEmployee = async (req, res) => {
 // @route   POST /api/auth/refresh
 const refreshToken = async (req, res) => {
     try {
+        console.log('[AUTH-REFRESH] Raw Cookies:', req.cookies);
         const sessionToken = req.cookies.refresh_token;
 
         if (!sessionToken) {
+            console.log('[AUTH-REFRESH] Error: No refresh token in cookies');
             return res.status(401).json({ message: 'No refresh token provided' });
         }
 

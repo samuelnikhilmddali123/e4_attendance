@@ -62,7 +62,7 @@ api.interceptors.response.use(
         if (error.response && error.response.status === 401 && !originalRequest._retry) {
 
             // Skip refresh attempt if the failed request was a login or a refresh call itself
-            if (originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/refresh')) {
+            if (originalRequest.url.includes('auth/login') || originalRequest.url.includes('auth/refresh')) {
                 return Promise.reject(error);
             }
 
