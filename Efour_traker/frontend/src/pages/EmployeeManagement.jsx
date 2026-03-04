@@ -51,7 +51,7 @@ const EmployeeManagement = () => {
             await api.post('/admin/employees', createForm);
             setSuccess('Employee created successfully!');
             setShowCreateModal(false);
-            setCreateForm({ emp_no: '', name: '', full_name: '', email: '', password: '', role: 'employee' });
+            setCreateForm({ emp_no: '', name: '', full_name: '', email: '', password: '', role: 'employee', face_descriptor: [], is_face_enabled: false });
             fetchEmployees();
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
@@ -256,7 +256,7 @@ const EmployeeManagement = () => {
                                                 <p className="text-[10px] text-green-600 font-medium">Biometric data ready</p>
                                             </div>
                                         </div>
-                                        <button 
+                                        <button
                                             type="button"
                                             onClick={() => setCreateForm({ ...createForm, face_descriptor: [], is_face_enabled: false })}
                                             className="text-xs font-bold text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-all"
@@ -265,9 +265,9 @@ const EmployeeManagement = () => {
                                         </button>
                                     </div>
                                 ) : (
-                                    <FaceCapture 
+                                    <FaceCapture
                                         label="Enroll Face for Secure Login"
-                                        onCapture={(descriptor) => setCreateForm({ ...createForm, face_descriptor: descriptor, is_face_enabled: true })} 
+                                        onCapture={(descriptor) => setCreateForm({ ...createForm, face_descriptor: descriptor, is_face_enabled: true })}
                                     />
                                 )}
                             </div>

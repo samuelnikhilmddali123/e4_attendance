@@ -182,9 +182,9 @@ const createEmployee = async (req, res) => {
                     // Log the AI vector distance for debugging
                     console.log(`[AI-Face-Matcher] Score between incoming face and ${existingUser.emp_no} (${existingUser.name}): ${distance}`);
 
-                    // For duplicate checking, we use a looser threshold (0.55) 
-                    // to aggressively block different photos of the same person.
-                    if (distance < 0.55) {
+                    // For duplicate checking, we use a more standard threshold (0.45) 
+                    // to avoid incorrectly blocking different people who look similar.
+                    if (distance < 0.45) {
                         return res.status(400).json({
                             message: `This face is already enrolled under employee: ${existingUser.name} (${existingUser.emp_no})`
                         });
