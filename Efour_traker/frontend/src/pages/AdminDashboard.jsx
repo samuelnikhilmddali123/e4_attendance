@@ -3,6 +3,7 @@ import api from '../services/api';
 import {
     Users, ClipboardList, LogOut, CheckCircle2, AlertCircle, Wifi, Save
 } from 'lucide-react';
+import { io } from 'socket.io-client';
 
 const AdminDashboard = () => {
     const [todayReport, setTodayReport] = useState([]);
@@ -21,7 +22,41 @@ const AdminDashboard = () => {
         fetchAll();
         fetchWifiSettings();
         const interval = setInterval(fetchAll, 30000);
-        return () => clearInterval(interval);
+
+        // --- Socket.IO Integration for Real-Time Updates ---
+        // Determine backend URL from current window location (used for API)
+        const isVercel = window.location.hostname.includes('vercel.app');
+        const socketUrl = isVercel ? window.location.origin : 'http://localhost:5000';
+
+        const socket = io(socketUrl, {
+            path: '/socket.io/',
+            transports: ['websocket', 'polling']
+        });
+
+        socket.on('connect', () => {
+            console.log('[DASHBOARD] Socket connected:', socket.id);
+        });
+
+        socket.on('employeeStatusUpdate', (data) => {
+            console.log('[DASHBOARD] Real-time status update:', data);
+            // Update the specific row in todayReport without a full refresh
+            setTodayReport(prevReport => {
+                return prevReport.map(emp => {
+                    if (emp.emp_no === data.employeeId) {
+                        return {
+                            ...emp,
+                            is_on_wifi: data.status === 'online'
+                        };
+                    }
+                    return emp;
+                });
+            });
+        });
+
+        return () => {
+            clearInterval(interval);
+            socket.disconnect();
+        };
     }, []);
 
     const fetchWifiSettings = async () => {

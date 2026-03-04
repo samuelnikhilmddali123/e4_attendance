@@ -47,6 +47,15 @@ const heartbeat = async (req, res) => {
 
         if (oldStatus !== employee.status) {
             console.log(`[PRESENCE] Employee ${emp_no} is now ${employee.status.toUpperCase()}`);
+
+            // Emit Socket.IO event for real-time dashboard update
+            const io = req.app.get('io');
+            if (io && typeof io.emit === 'function') {
+                io.emit('employeeStatusUpdate', {
+                    employeeId: emp_no,
+                    status: employee.status
+                });
+            }
         }
 
         res.json({ success: true, status: employee.status });

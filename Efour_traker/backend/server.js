@@ -4,12 +4,15 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
+const http = require('http');
+const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
 
 // Trust proxy for Vercel/proxies to correctly populate req.ip
 app.set('trust proxy', true);
@@ -34,6 +37,29 @@ app.use(cors(corsOptions));
 
 // Explicitly handle OPTIONS preflight
 app.options('*', cors(corsOptions));
+
+// Initialize Socket.IO
+const io = new Server(server, {
+    cors: corsOptions
+});
+app.set('io', io);
+
+io.on('connection', (socket) => {
+    console.log(`[SOCKET] Client connected: ${socket.id}`);
+
+    // Allow users to join their own room (for force logout or private messages)
+    socket.on('join_room', (room) => {
+        socket.join(room);
+        console.log(`[SOCKET] Client ${socket.id} joined room ${room}`);
+    });
+
+    socket.on('disconnect', () => {
+        console.log(`[SOCKET] Client disconnected: ${socket.id}`);
+    });
+});
+
+// Initialize background scheduler
+require('./scheduler')(io);
 
 // 2. Global Request Logger 
 app.use((req, res, next) => {
@@ -84,13 +110,7 @@ app.get('/', (req, res) => {
     res.send('EFOUR Work Monitoring API (Serverless Ready - Production Mode)');
 });
 
-// Socket.io Stub to prevent crashes in inherited code
-app.set('io', {
-    to: () => ({
-        emit: () => { } // Silent stub
-    }),
-    emit: () => { }
-});
+// Socket.io Stub to prevent crashes in inherited code (Removed real socket.io initialized above)
 
 // 404 Handler
 app.use((req, res) => {
@@ -110,12 +130,12 @@ app.use((err, req, res, next) => {
 });
 
 // Export for Vercel
-module.exports = app;
+module.exports = server;
 
 // Start server locally if not running on Vercel
 if (process.env.NODE_ENV !== 'production') {
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
         console.log(`[SYSTEM] Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
     });
 }

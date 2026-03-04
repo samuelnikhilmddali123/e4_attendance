@@ -24,6 +24,14 @@ const initScheduler = (io) => {
                 emp.status = 'offline';
                 await emp.save();
                 console.log(`[PRESENCE] Employee ${emp.emp_no} marked OFFLINE (Timeout)`);
+
+                // Emit event to instant-update admin dashboard
+                if (io && typeof io.emit === 'function') {
+                    io.emit('employeeStatusUpdate', {
+                        employeeId: emp.emp_no,
+                        status: 'offline'
+                    });
+                }
             }
         } catch (error) {
             console.error('[PRESENCE-ERROR] Auto-offline job failed:', error);
