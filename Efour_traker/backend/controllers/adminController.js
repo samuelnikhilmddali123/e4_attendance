@@ -32,27 +32,8 @@ const getEmployees = async (req, res) => {
         const today = istTime.date;
 
         const employees = await Employee.find({});
-        const sevenPMIST = istTime.sevenPM;
-        const now = new Date();
-        const isPastSevenPM = now >= sevenPMIST || istTime.hour >= 19;
 
-        // Cleanup: If past 7pm, close any active today's sessions
-        if (isPastSevenPM) {
-            await Attendance.updateMany(
-                { date: today, logout_time: null },
-                {
-                    $set: {
-                        logout_time: sevenPMIST.toISOString(),
-                        session_status: 'Auto Logout',
-                        logout_reason: 'Office hours ended'
-                    }
-                }
-            );
-        }
-
-        const activeAttendance = isPastSevenPM
-            ? []
-            : await Attendance.find({ date: today, logout_time: null });
+        const activeAttendance = await Attendance.find({ date: today, logout_time: null });
         const activeEmpNos = new Set(activeAttendance.map(a => a.emp_no));
 
         const result = employees.map(e => ({
@@ -81,25 +62,7 @@ const getDailyReports = async (req, res) => {
     const filterDate = date || istTime.date;
     const isFilterToday = filterDate === istTime.date;
 
-    const sevenPMIST = istTime.sevenPM;
-    const now = new Date();
-    const isPastSevenPM = now >= sevenPMIST || istTime.hour >= 19;
-
     try {
-        // Silent cleanup: If it's past 7 PM, close any active sessions in the background
-        if (isFilterToday && isPastSevenPM) {
-            await Attendance.updateMany(
-                { date: filterDate, logout_time: null },
-                {
-                    $set: {
-                        logout_time: sevenPMIST.toISOString(),
-                        session_status: 'Auto Logout',
-                        logout_reason: 'Office hours ended'
-                    }
-                }
-            );
-        }
-
         const employees = await Employee.find({ role: 'employee' }).sort({ emp_no: 1 });
         const attendances = await Attendance.find({ date: filterDate });
 
@@ -110,7 +73,7 @@ const getDailyReports = async (req, res) => {
             let totalMs = 0;
             const sessions = empAttendances.map(att => {
                 let loginTime = new Date(att.login_time);
-                let logoutTime = att.logout_time ? new Date(att.logout_time) : (isFilterToday && isPastSevenPM ? sevenPMIST : null);
+                let logoutTime = att.logout_time ? new Date(att.logout_time) : null;
 
                 // Use the accumulated duration from heartbeat if available, otherwise fallback to basic calc
                 let durationMs = att.total_duration_ms ||
@@ -121,8 +84,8 @@ const getDailyReports = async (req, res) => {
 
                 return {
                     login: formatTime(att.login_time),
-                    logout: att.logout_time ? formatTime(att.logout_time) : (isFilterToday && isPastSevenPM ? formatTime(sevenPMIST) : 'N/A'),
-                    is_active: !att.logout_time && !(isFilterToday && isPastSevenPM),
+                    logout: att.logout_time ? formatTime(att.logout_time) : 'N/A',
+                    is_active: !att.logout_time,
                     is_on_wifi: att.is_on_wifi !== undefined ? att.is_on_wifi : true
                 };
             });
@@ -130,7 +93,7 @@ const getDailyReports = async (req, res) => {
             let working_hours = 'N/A';
             let is_half_day = false;
             if (empAttendances.length > 0) {
-                const hasActive = empAttendances.some(a => !a.logout_time && !(isFilterToday && isPastSevenPM));
+                const hasActive = empAttendances.some(a => !a.logout_time);
 
                 if (totalMs > 0 || !hasActive) {
                     const hrs = Math.floor(totalMs / 3600000);
@@ -364,11 +327,7 @@ const forceLogoutAll = async (req, res) => {
         });
 
         for (const record of activeRecords) {
-            // If it's today's record and it's past 7 PM, use 7 PM as logout time
-            // Otherwise use current IST time
-            record.logout_time = (record.date === istTime.date && new Date() > istTime.sevenPM)
-                ? istTime.sevenPM.toISOString()
-                : now;
+            record.logout_time = now;
             record.session_status = 'Forced Logout';
             record.logout_reason = 'Terminated by Admin';
             await record.save();
@@ -408,10 +367,7 @@ const forceLogoutEmployee = async (req, res) => {
         }).sort({ login_time: -1 });
 
         if (record) {
-            const isToday = record.date === istTime.date;
-            const pastSeven = new Date() > istTime.sevenPM;
-
-            record.logout_time = (isToday && pastSeven) ? istTime.sevenPM.toISOString() : now;
+            record.logout_time = now;
             record.session_status = 'Forced Logout';
             record.logout_reason = 'Terminated by Admin';
             await record.save();
