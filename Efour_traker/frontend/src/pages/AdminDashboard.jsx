@@ -18,13 +18,21 @@ const AdminDashboard = () => {
 
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
+    const [refreshingStatus, setRefreshingStatus] = useState(false);
+
     useEffect(() => {
         fetchAll();
         fetchWifiSettings();
+
+        // Full report fetch every 30 seconds
         const interval = setInterval(fetchAll, 30000);
 
-        // --- Socket.IO Integration for Real-Time Updates ---
-        // Determine backend URL from current window location (used for API)
+        // --- Fast Polling for Status Updates (Fallback for Vercel Serverless) ---
+        // Since Vercel doesn't support persistent WebSockets, we poll a lightweight
+        // endpoint every 5 seconds to get instant online/offline status changes.
+        const fastPoll = setInterval(fetchQuickStatus, 5000);
+
+        // --- Socket.IO Integration (Works locally, falls back on Vercel) ---
         const isVercel = window.location.hostname.includes('vercel.app');
         const socketUrl = isVercel ? window.location.origin : 'http://localhost:5000';
 
@@ -39,25 +47,55 @@ const AdminDashboard = () => {
 
         socket.on('employeeStatusUpdate', (data) => {
             console.log('[DASHBOARD] Real-time status update:', data);
-            // Update the specific row in todayReport without a full refresh
-            setTodayReport(prevReport => {
-                return prevReport.map(emp => {
-                    if (emp.emp_no === data.employeeId) {
-                        return {
-                            ...emp,
-                            is_on_wifi: data.status === 'online'
-                        };
-                    }
-                    return emp;
-                });
-            });
+            updateEmployeeStatusUI(data.employeeId, data.status);
         });
 
         return () => {
             clearInterval(interval);
+            clearInterval(fastPoll);
             socket.disconnect();
         };
     }, []);
+
+    const updateEmployeeStatusUI = (empNo, statusStr) => {
+        setTodayReport(prevReport => {
+            return prevReport.map(emp => {
+                if (emp.emp_no === empNo) {
+                    return {
+                        ...emp,
+                        is_on_wifi: statusStr === 'online'
+                    };
+                }
+                return emp;
+            });
+        });
+    };
+
+    const fetchQuickStatus = async () => {
+        try {
+            // Lightweight endpoint just returning { emp_no, status }
+            const res = await api.get('/admin/employees/status');
+            const statuses = res.data;
+
+            setTodayReport(prevReport => {
+                let changed = false;
+                const newReport = prevReport.map(emp => {
+                    const latest = statuses.find(s => s.emp_no === emp.emp_no);
+                    if (latest) {
+                        const newWifiState = (latest.status === 'online');
+                        if (emp.is_on_wifi !== newWifiState) {
+                            changed = true;
+                            return { ...emp, is_on_wifi: newWifiState };
+                        }
+                    }
+                    return emp;
+                });
+                return changed ? newReport : prevReport;
+            });
+        } catch (error) {
+            // Silent fail for polling
+        }
+    };
 
     const fetchWifiSettings = async () => {
         try {

@@ -9,11 +9,13 @@ const {
     getLoginRequests,
     handleLoginRequest,
     forceLogoutAll,
-    forceLogoutEmployee
+    forceLogoutEmployee,
+    getEmployeeStatuses
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/auth');
 
 router.get('/employees', protect, admin, getEmployees);
+router.get('/employees/status', protect, admin, getEmployeeStatuses);
 router.post('/employees', protect, admin, createEmployee);
 router.delete('/employees/:emp_no', protect, admin, deleteEmployee);
 router.get('/reports/daily', protect, admin, getDailyReports);

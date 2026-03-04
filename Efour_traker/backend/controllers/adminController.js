@@ -391,6 +391,18 @@ const forceLogoutEmployee = async (req, res) => {
     }
 };
 
+// @desc    Get light status list for all employees
+// @route   GET /api/admin/employees/status
+const getEmployeeStatuses = async (req, res) => {
+    try {
+        const employees = await Employee.find({ role: 'employee' }).select('emp_no status').lean();
+        res.json(employees);
+    } catch (error) {
+        console.error('Failed to get employee statuses:', error);
+        res.status(500).json({ message: 'Server error fetching statuses' });
+    }
+};
+
 module.exports = {
     getEmployees,
     getDailyReports,
@@ -400,6 +412,7 @@ module.exports = {
     getLoginRequests,
     handleLoginRequest,
     forceLogoutAll,
-    forceLogoutEmployee
+    forceLogoutEmployee,
+    getEmployeeStatuses
 };
 
