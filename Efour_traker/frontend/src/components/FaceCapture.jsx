@@ -8,6 +8,9 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, onMi
     const [modelsLoaded, setModelsLoaded] = useState(false);
     const [stream, setStream] = useState(null);
     const [isCapturing, setIsCapturing] = useState(false);
+    const [error, setError] = useState(null);
+    const [status, setStatus] = useState('Initializing...');
+    const scanStartTime = useRef(null);
     const syncRef = useRef({
         lastMismatchDescriptor: null,
         lastMismatchImage: null
