@@ -163,6 +163,34 @@ const AttendanceCalendar = ({ attendanceHistory = [] }) => {
                                     const loginTime = new Date(record.login_time);
                                     const logoutTime = record.logout_time ? new Date(record.logout_time) : null;
 
+                                    // Calculate Disconnected Intervals from wifi_history
+                                    const history = record.wifi_history || [];
+                                    const disconnections = [];
+                                    let totalDisconnectedMs = 0;
+
+                                    for (let i = 0; i < history.length; i++) {
+                                        if (history[i].status === 'Disconnected') {
+                                            const start = new Date(history[i].timestamp);
+                                            // Find the next 'Connected' entry or use logout/now
+                                            const nextEntry = history.slice(i + 1).find(e => e.status === 'Connected');
+                                            const end = nextEntry ? new Date(nextEntry.timestamp) : (logoutTime || new Date());
+
+                                            const diff = end - start;
+                                            if (diff > 0) {
+                                                disconnections.push({
+                                                    start,
+                                                    end,
+                                                    durationFormatted: diff < 60000 ? `${Math.round(diff / 1000)}s` : `${Math.floor(diff / 60000)}m ${Math.floor((diff % 60000) / 1000)}s`
+                                                });
+                                                totalDisconnectedMs += diff;
+                                            }
+                                        }
+                                    }
+
+                                    const totalDisconnectedFormatted = totalDisconnectedMs < 60000 ?
+                                        `${Math.round(totalDisconnectedMs / 1000)}s` :
+                                        `${Math.floor(totalDisconnectedMs / 3600000)}h ${Math.floor((totalDisconnectedMs % 3600000) / 60000)}m`;
+
                                     return (
                                         <div key={idx} className="p-3 rounded-xl bg-gray-50 border border-gray-100 space-y-2">
                                             <div className="flex justify-between text-xs">
@@ -187,6 +215,30 @@ const AttendanceCalendar = ({ attendanceHistory = [] }) => {
                                                     )}
                                                 </div>
                                             </div>
+
+                                            {/* Wi-Fi Disconnection Alert */}
+                                            {disconnections.length > 0 && (
+                                                <div className="mt-2 pt-2 border-t border-dashed border-gray-200">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1">
+                                                            <AlertCircle className="w-3 h-3" />
+                                                            Wi-Fi Disconnections
+                                                        </span>
+                                                        <span className="text-[10px] font-black text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
+                                                            Total: {totalDisconnectedFormatted}
+                                                        </span>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        {disconnections.map((d, dIdx) => (
+                                                            <div key={dIdx} className="flex justify-between text-[9px] text-gray-500 font-medium bg-white/50 p-1.5 rounded-lg border border-gray-100">
+                                                                <span>{format(d.start, 'hh:mm:ss a')} - {format(d.end, 'hh:mm:ss a')}</span>
+                                                                <span className="font-bold text-amber-600">({d.durationFormatted})</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {record.logout_reason && (
                                                 <div className="text-[10px] text-red-600 bg-red-50 p-2 rounded mt-1 border border-red-100">
                                                     Reason: {record.logout_reason}

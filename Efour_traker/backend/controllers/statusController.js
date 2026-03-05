@@ -32,6 +32,19 @@ const heartbeat = async (req, res) => {
             const lastPing = attendance.last_ping || attendance.login_time;
             const diffMs = now - lastPing;
 
+            // 2. Track WiFi Status Changes in history
+            const currentWifiStatus = is_on_wifi ? 'Connected' : 'Disconnected';
+            const lastHistoryEntry = attendance.wifi_history?.[attendance.wifi_history.length - 1];
+
+            if (!lastHistoryEntry || lastHistoryEntry.status !== currentWifiStatus) {
+                console.log(`[PRESENCE] WiFi Status Change for ${emp_no}: ${lastHistoryEntry?.status || 'NONE'} -> ${currentWifiStatus}`);
+                attendance.wifi_history.push({
+                    status: currentWifiStatus,
+                    timestamp: now
+                });
+            }
+
+            // 1. Update Attendance Duration if on WiFi
             // Strict Accumulation: 
             // 1. Must be on WiFi
             // 2. Diff must be positive
