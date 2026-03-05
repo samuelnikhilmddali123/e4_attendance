@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { LogIn, User, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { io } from 'socket.io-client';
 import FaceCapture from '../components/FaceCapture';
 import api from '../services/api';
 
