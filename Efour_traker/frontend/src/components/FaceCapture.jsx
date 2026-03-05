@@ -113,7 +113,7 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, onMi
                 const targetFloatArr = new Float32Array(targetDescriptor);
                 const distance = faceapi.euclideanDistance(detections.descriptor, targetFloatArr);
 
-                if (distance < 0.45) {
+                if (distance < 0.55) {
                     matchCount.current += 1;
                     if (matchCount.current >= 3) {
                         setStatus('Identity Verified! Logging in...');
@@ -229,8 +229,8 @@ const FaceCapture = ({ onCapture, targetDescriptor = null, onVerify = null, onMi
             const targetFloatArr = new Float32Array(targetDescriptor);
             const distance = faceapi.euclideanDistance(detections.descriptor, targetFloatArr);
 
-            // Euclidean distance < 0.45 means a strong match
-            if (distance < 0.45) {
+            // Euclidean distance < 0.55 means a match
+            if (distance < 0.55) {
                 setStatus('Identity Verified!');
                 if (onVerify) onVerify(true);
                 stopCamera();

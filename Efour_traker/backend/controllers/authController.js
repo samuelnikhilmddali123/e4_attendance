@@ -424,7 +424,7 @@ const logProxyAttempt = async (req, res) => {
                 }
                 const dist = Math.sqrt(sum);
 
-                if (dist < 0.45 && dist < minDistance) {
+                if (dist < 0.48 && dist < minDistance) {
                     minDistance = dist;
                     detectedEmployee = emp;
                 }
