@@ -11,7 +11,9 @@ const {
     forceLogoutAll,
     forceLogoutEmployee,
     getEmployeeStatuses,
-    getProxyAttempts
+    getProxyAttempts,
+    deleteProxyAttempt,
+    clearAllProxyAttempts
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/auth');
 
