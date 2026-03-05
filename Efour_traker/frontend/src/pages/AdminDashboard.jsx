@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import {
-    Users, ClipboardList, LogOut, CheckCircle2, AlertCircle, Wifi, Save, ShieldAlert, Monitor
+    Users, ClipboardList, LogOut, CheckCircle2, AlertCircle, Wifi, Save, ShieldAlert, Monitor, Trash2
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 
@@ -145,6 +145,26 @@ const AdminDashboard = () => {
             setProxyAttempts(res.data);
         } catch (error) {
             console.error('Failed to fetch proxy attempts:', error);
+        }
+    };
+
+    const handleDeleteProxyAttempt = async (id) => {
+        if (!window.confirm('Delete this log entry?')) return;
+        try {
+            await api.delete(`/admin/proxy-attempts/${id}`);
+            setProxyAttempts(prev => prev.filter(a => a._id !== id));
+        } catch (error) {
+            alert('Failed to delete log entry');
+        }
+    };
+
+    const handleClearAllProxyAttempts = async () => {
+        if (!window.confirm('Are you sure you want to CLEAR ALL proxy history? This cannot be undone.')) return;
+        try {
+            await api.delete('/admin/proxy-attempts');
+            setProxyAttempts([]);
+        } catch (error) {
+            alert('Failed to clear history');
         }
     };
 
@@ -362,13 +382,22 @@ const AdminDashboard = () => {
                         </h3>
                         <p className="text-xs text-rose-600 font-medium">System flagged these as face mismatches</p>
                     </div>
+                    {proxyAttempts.length > 0 && (
+                        <button
+                            onClick={handleClearAllProxyAttempts}
+                            className="text-xs font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-rose-100 transition-all shadow-sm"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Clear All History
+                        </button>
+                    )}
                 </div>
                 <div className="p-6">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead>
                                 <tr className="border-b border-gray-100">
-                                    {['Captured Image', 'Login Attempt By', 'Person Detected', 'Device / IP', 'Time'].map(h => (
+                                    {['Captured Image', 'Login Attempt By', 'Person Detected', 'Device / IP', 'Time', 'Actions'].map(h => (
                                         <th key={h} className="pb-3 px-2 text-xs font-bold text-gray-400 uppercase tracking-wider">{h}</th>
                                     ))}
                                 </tr>
@@ -419,6 +448,15 @@ const AdminDashboard = () => {
                                                 dateStyle: 'short',
                                                 timeStyle: 'short'
                                             }).format(new Date(attempt.timestamp))}
+                                        </td>
+                                        <td className="py-3 px-2">
+                                            <button
+                                                onClick={() => handleDeleteProxyAttempt(attempt._id)}
+                                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                title="Delete Log"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}

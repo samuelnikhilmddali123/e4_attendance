@@ -435,6 +435,34 @@ const getProxyAttempts = async (req, res) => {
     }
 };
 
+// @desc    Delete a specific proxy attempt
+// @route   DELETE /api/admin/proxy-attempts/:id
+const deleteProxyAttempt = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const attempt = await ProxyAttempt.findByIdAndDelete(id);
+        if (!attempt) {
+            return res.status(404).json({ message: 'Attempt not found' });
+        }
+        res.json({ message: 'Log entry deleted successfully' });
+    } catch (error) {
+        console.error('Delete Proxy Attempt Error:', error);
+        res.status(500).json({ message: 'Server error deleting log' });
+    }
+};
+
+// @desc    Clear all proxy attempts
+// @route   DELETE /api/admin/proxy-attempts
+const clearAllProxyAttempts = async (req, res) => {
+    try {
+        await ProxyAttempt.deleteMany({});
+        res.json({ message: 'All proxy history cleared successfully' });
+    } catch (error) {
+        console.error('Clear Proxy Attempts Error:', error);
+        res.status(500).json({ message: 'Server error clearing history' });
+    }
+};
+
 module.exports = {
     getEmployees,
     getDailyReports,
@@ -446,6 +474,8 @@ module.exports = {
     forceLogoutAll,
     forceLogoutEmployee,
     getEmployeeStatuses,
-    getProxyAttempts
+    getProxyAttempts,
+    deleteProxyAttempt,
+    clearAllProxyAttempts
 };
 
