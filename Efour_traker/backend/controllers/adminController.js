@@ -7,8 +7,14 @@ const { getISTTime } = require('./utilsController');
 // AI Feature Vector Matcher (Euclidean Distance fallback for 128-d face embeddings)
 const calculateFaceSimilarity = (descriptor1, descriptor2) => {
     try {
-        const a1 = Array.isArray(descriptor1) ? descriptor1 : Array.from(descriptor1 || []);
-        const a2 = Array.isArray(descriptor2) ? descriptor2 : Array.from(descriptor2 || []);
+        // Ensure we're working with arrays or typed arrays
+        const a1 = Array.isArray(descriptor1) ? descriptor1 :
+            (descriptor1 instanceof Float32Array || descriptor1 instanceof Float64Array) ? Array.from(descriptor1) :
+                Object.values(descriptor1 || {}); // Handle objects with index keys
+
+        const a2 = Array.isArray(descriptor2) ? descriptor2 :
+            (descriptor2 instanceof Float32Array || descriptor2 instanceof Float64Array) ? Array.from(descriptor2) :
+                Object.values(descriptor2 || {});
 
         if (a1.length === 0 || a2.length === 0) {
             console.log("[AI-Matcher] Skipping calculation: Empty descriptor(s)");
@@ -16,14 +22,16 @@ const calculateFaceSimilarity = (descriptor1, descriptor2) => {
         }
 
         let sum = 0;
-        for (let i = 0; i < 128; i++) {
-            const val1 = typeof a1[i] === 'number' ? a1[i] : Number(a1[i]) || 0;
-            const val2 = typeof a2[i] === 'number' ? a2[i] : Number(a2[i]) || 0;
+        // Face descriptors are typically 128-dimensional vectors
+        const len = Math.min(a1.length, a2.length, 128);
+        for (let i = 0; i < len; i++) {
+            const val1 = Number(a1[i]) || 0;
+            const val2 = Number(a2[i]) || 0;
             const diff = val1 - val2;
             sum += diff * diff;
         }
         const distance = Math.sqrt(sum);
-        console.log(`[AI-Matcher] Calculated Distance: ${distance.toFixed(4)}`);
+        console.log(`[AI-Matcher] Calculated Distance: ${distance.toFixed(4)} (Vectors: ${a1.length} vs ${a2.length})`);
         return distance;
     } catch (e) {
         console.error("AI Matcher Error:", e);
@@ -179,8 +187,11 @@ const createEmployee = async (req, res) => {
         }
 
         // Check Face Uniqueness
-        if (is_face_enabled && face_descriptor && face_descriptor.length > 0) {
-            const allFaceUsers = await Employee.find({ is_face_enabled: true });
+        if (face_descriptor && face_descriptor.length > 0) {
+            // Scan ALL employees with face data, regardless of is_face_enabled
+            const allFaceUsers = await Employee.find({
+                face_descriptor: { $exists: true, $not: { $size: 0 } }
+            });
 
             console.log(`[AI-Security] Scanning ${allFaceUsers.length} enrolled faces for duplication...`);
 
@@ -188,12 +199,12 @@ const createEmployee = async (req, res) => {
                 if (existingUser.face_descriptor && existingUser.face_descriptor.length > 0) {
                     const distance = calculateFaceSimilarity(face_descriptor, existingUser.face_descriptor);
 
-                    // Duplicate check threshold (0.50)
-                    // We use 0.50 for registration to be more sensitive to duplicates.
-                    if (distance < 0.50) {
+                    // Duplicate check threshold (0.60)
+                    // We use 0.60 for registration to be highly preventative of duplicates.
+                    if (distance < 0.60) {
                         console.log(`[AI-Security] DUPLICATE DETECTED: Matches ${existingUser.name} (Dist: ${distance.toFixed(3)})`);
                         return res.status(400).json({
-                            message: `Face Uniqueness Error: This face is already enrolled under employee "${existingUser.name}" (ID: ${existingUser.emp_no}).`
+                            message: `Face Uniqueness Error: This face is already enrolled under employee "${existingUser.full_name || existingUser.name}" (ID: ${existingUser.emp_no}).`
                         });
                     }
                 }
