@@ -60,6 +60,7 @@ api.interceptors.response.use(
 
         // If error is 401 Unauthorized and we haven't already tried to refresh the token
         if (error.response && error.response.status === 401 && !originalRequest._retry) {
+            console.warn(`[API] 401 Unauthorized: ${originalRequest.url}. Attempting token refresh...`);
 
             // Skip refresh attempt if the failed request was a login or a refresh call itself
             if (originalRequest.url.includes('auth/login') || originalRequest.url.includes('auth/refresh')) {
@@ -67,6 +68,7 @@ api.interceptors.response.use(
             }
 
             if (isRefreshing) {
+                console.log('[API] Refresh already in progress, queuing request');
                 // If a refresh is already in progress, queue this request
                 return new Promise(function (resolve, reject) {
                     failedQueue.push({ resolve, reject });
@@ -84,8 +86,11 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                // Silent network call to generate a new Access Token using the HttpOnly refresh token cookie
-                const response = await axios.post(`${API_URL}auth/refresh`, {}, { withCredentials: true });
+                // Ensure we use the absolute URL for refresh to avoid proxy issues during the refresh itself
+                const REFRESH_URL = API_URL.startsWith('http') ? `${API_URL}auth/refresh` : `${window.location.origin}${API_URL}auth/refresh`;
+                console.log('[API] Calling refresh endpoint:', REFRESH_URL);
+
+                const response = await axios.post(REFRESH_URL, {}, { withCredentials: true });
                 const { token } = response.data;
 
                 console.log('[API] Silent Token Refresh Successful');
@@ -99,10 +104,12 @@ api.interceptors.response.use(
 
                 return api(originalRequest);
             } catch (refreshError) {
-                console.warn('[API] Silent Token Refresh Failed (Session truly expired)');
+                console.error('[API] Silent Token Refresh Failed:', refreshError.response?.data?.message || refreshError.message);
                 processQueue(refreshError, null);
 
+                // Only redirect if we are not already on the login page
                 if (!window.location.pathname.includes('/login')) {
+                    console.warn('[API] Redirecting to login due to failed refresh');
                     localStorage.removeItem('token');
                     localStorage.removeItem('user');
                     window.location.href = '/login';
@@ -113,8 +120,13 @@ api.interceptors.response.use(
             }
         }
 
+        if (error.response?.status === 403) {
+            console.error('[API] 403 Forbidden - Access Denied:', error.response.data?.message);
+        }
+
         return Promise.reject(error);
     }
 );
 
 export default api;
+```

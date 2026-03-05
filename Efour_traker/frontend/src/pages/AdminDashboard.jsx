@@ -34,28 +34,34 @@ const AdminDashboard = () => {
         // endpoint every 5 seconds to get instant online/offline status changes.
         const fastPoll = setInterval(fetchQuickStatus, 5000);
 
-        // --- Socket.IO Integration (Works locally, falls back on Vercel) ---
-        const isVercel = window.location.hostname.includes('vercel.app');
-        const socketUrl = isVercel ? window.location.origin : 'http://localhost:5000';
+        // --- Socket.IO Integration (DISABLED ON VERCEL) ---
+        const isVercelHost = window.location.hostname.includes('vercel.app');
+        let socket = null;
 
-        const socket = io(socketUrl, {
-            path: '/socket.io/',
-            transports: ['websocket', 'polling']
-        });
+        if (!isVercelHost) {
+            console.log('[DASHBOARD] Local environment detected, initializing Socket.IO');
+            const socketUrl = 'http://localhost:5000';
+            socket = io(socketUrl, {
+                path: '/socket.io/',
+                transports: ['websocket', 'polling']
+            });
 
-        socket.on('connect', () => {
-            console.log('[DASHBOARD] Socket connected:', socket.id);
-        });
+            socket.on('connect', () => {
+                console.log('[DASHBOARD] Socket connected:', socket.id);
+            });
 
-        socket.on('employeeStatusUpdate', (data) => {
-            console.log('[DASHBOARD] Real-time status update:', data);
-            updateEmployeeStatusUI(data.employeeId, data.status);
-        });
+            socket.on('employeeStatusUpdate', (data) => {
+                console.log('[DASHBOARD] Real-time status update:', data);
+                updateEmployeeStatusUI(data.employeeId, data.status);
+            });
+        } else {
+            console.log('[DASHBOARD] Vercel environment detected, skipping Socket.IO (Polling fallback active)');
+        }
 
         return () => {
             clearInterval(interval);
             clearInterval(fastPoll);
-            socket.disconnect();
+            if (socket) socket.disconnect();
         };
     }, []);
 
